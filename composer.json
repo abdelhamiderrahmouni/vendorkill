@@ -1,18 +1,18 @@
 {
-    "name": "laravel-zero/laravel-zero",
-    "description": "The Laravel Zero Framework.",
-    "keywords": ["framework", "laravel", "laravel zero", "console", "cli"],
-    "homepage": "https://laravel-zero.com",
+    "name": "abdelhamiderrahmouni/vendorkill",
+    "description": "a composer package to install globally and remove composer vendor folders in you old project to save storage.",
+    "keywords": ["composer", "npkill", "vendor", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner"],
+    "homepage": "https://github.com/abdelhamiderrahmouni/vendorkill",
     "type": "project",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/laravel-zero/laravel-zero/issues",
-        "source": "https://github.com/laravel-zero/laravel-zero"
+        "issues": "https://github.com/abdelhamiderrahmouni/vendorkill/issues",
+        "source": "https://github.com/abdelhamiderrahmouni/vendorkill"
     },
     "authors": [
         {
-            "name": "Nuno Maduro",
-            "email": "enunomaduro@gmail.com"
+            "name": "Abdelhamid Errahmouni",
+            "email": "abdelhamiderrahmouni@gmail.com"
         }
     ],
     "require": {
