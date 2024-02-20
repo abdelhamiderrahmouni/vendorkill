@@ -3,7 +3,6 @@
     "description": "a composer package to install globally and remove composer vendor folders in you old project to save storage.",
     "keywords": ["composer", "npkill", "vendor", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner"],
     "homepage": "https://github.com/abdelhamiderrahmouni/vendorkill",
-    "type": "project",
     "license": "MIT",
     "support": {
         "issues": "https://github.com/abdelhamiderrahmouni/vendorkill/issues",
