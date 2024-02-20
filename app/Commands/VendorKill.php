@@ -14,7 +14,7 @@ class VendorKill extends Command
      *
      * @var string
      */
-    protected $signature = 'process {path?* : The path to search for vendor directories}
+    protected $signature = 'process {path? : The path to search for vendor directories}
                                     {--maxdepth=2 : The maximum depth to search for vendor directories}';
 
     /**

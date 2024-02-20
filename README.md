@@ -9,16 +9,26 @@ a composer package to install globally and remove composer vendor folders in you
 
 ## Installation
 
-You can install the package via composer:
+You can install the package globally via composer:
 
 ```bash
 composer global require abdelhamiderrahmouni/vendorkill
 ```
 
+you will find it installed in `~/.composer/vendor/bin` or `~/.config/composer/vendor/bin` directory.
+add it to your path to use it globally or create an alias like the following:
+
+```bash
+alias vendorkill="~/.composer/vendor/bin/vendorkill"
+# or
+alias vendorkill="~/.config/composer/vendor/bin/vendorkill"
+```
+
+
 ## Usage
 
 ```php
-    
+vendorkill [path] [options: --maxdepth=2]
 ```
 
 ## Update
