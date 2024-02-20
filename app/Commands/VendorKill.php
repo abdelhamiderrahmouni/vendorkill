@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use function Laravel\Prompts\multiselect;
 
 class VendorKill extends Command
 {
@@ -47,10 +48,12 @@ class VendorKill extends Command
         // Show the total size of the vendor directories
         $this->showTotal($total_size_human, $vendor_dirs);
         $counter =  1;
+        $selectOptions = [];
         // List the vendor directories with their sizes and project names
         foreach ($vendor_dirs as $index => $dir) {
             $size = shell_exec("du -sh $dir | cut -f1");
             $project_name = basename(dirname($dir));
+            $selectOptions[$counter] = "$project_name";
             $this->components->twoColumnDetail('<options=bold>' . "{$counter}: $project_name" . '</>', '<options=bold>' . $size . '</>');
             $this->components->twoColumnDetail('Path', $dir);
             $this->newLine();
@@ -61,8 +64,11 @@ class VendorKill extends Command
         $this->showTotal($total_size_human, $vendor_dirs);
 
         // Prompt the user to select directories to delete
-        $delete_numbers = $this->ask('Enter the numbers of the directories to delete, separated by spaces:');
-        $delete_numbers = explode(' ', $delete_numbers);
+        $delete_numbers = multiselect(
+            label: 'choose the directories to delete',
+            options: $selectOptions,
+            hint: 'Press <fg=green;options=bold>Space</> to chose single/multiple project(s) then press <fg=green;options=bold>Enter</> to confirm'
+        );
 
         // Delete the selected directories
         foreach ($delete_numbers as $num) {
