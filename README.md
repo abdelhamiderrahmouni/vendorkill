@@ -2,7 +2,7 @@
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/abdelhamiderrahmouni/vendorkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/vendorkill)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/vendorkill/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/vendorkill/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/vendorkill/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/vendorkill/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/vendorkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/vendorkill/actions?query=workflow%3A"pint"+branch%3Amaster)
 [![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/vendorkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/vendorkill)
 
 a composer package to install globally and remove composer vendor folders in you old project to save storage.
