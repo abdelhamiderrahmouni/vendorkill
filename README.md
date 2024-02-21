@@ -7,9 +7,9 @@
 
 a composer package to install globally and remove composer vendor folders in you old project to save storage.
 
-## Installation
+## Installation && Update
 
-You can install the package globally via composer:
+You can install the package globally via composer (and update it) by running the following command:
 
 ```bash
 composer global require abdelhamiderrahmouni/vendorkill
@@ -43,17 +43,11 @@ vendorkill /path/to/project --maxdepth=4 # remove vendor folders in /path/to/pro
 vendorkill /path/to/project --full # remove vendor folders in /path/to/project and all subdirectories
 ```
 
-## Update
-
-```bash
-
-```
-
-## Testing
-
-```bash
-composer test
-```
+## Roadmap
+- [x] create the command
+- [ ] add support for windows
+- [ ] add a build workflow to build the phar file automatically
+- ... share your ideas in the [issues](https://github.com/abdelhamiderrahmouni/vendorkill/issues)
 
 ## Changelog
 
@@ -65,7 +59,7 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
+Please open an [issue](https://github.com/abdelhamiderrahmouni/vendorkill/issues) to report any security vulnerabilities.
 
 ## Credits
 
