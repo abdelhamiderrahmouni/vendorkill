@@ -94,6 +94,8 @@ class VendorKill extends Command
             shell_exec("rm -rf {$dir_to_delete}");
             $this->info("Deleted {$dir_to_delete}");
         }
+
+        $this->thanks();
     }
 
     protected function getVendorTotalSize(array $vendor_dirs): string
@@ -124,10 +126,17 @@ class VendorKill extends Command
     {
         if (count($vendor_dirs) ===  0) {
             $this->info('🥳 No composer vendor directories found in this path.');
+            $this->thanks();
             exit(0);
         }
 
         $this->components->twoColumnDetail('🥳 <fg=green;options=bold>Found ' . count($vendor_dirs) . ' vendor directories</>', '<fg=green;options=bold>' . $total_size_human . '</>');
         $this->newLine();
+    }
+
+    private function thanks(): void
+    {
+        $this->newLine();
+        $this->line('💖 <fg=blue>Thanks for using VendorKill!</>');
     }
 }
