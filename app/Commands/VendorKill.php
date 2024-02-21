@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Commands;
 
 use LaravelZero\Framework\Commands\Command;
-use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
+
 use function Laravel\Prompts\multiselect;
 
 class VendorKill extends Command
@@ -23,7 +26,6 @@ class VendorKill extends Command
      *
      * @var string
      */
-
     protected $description = 'Delete composer vendor directories.';
 
     public function handle()
@@ -36,11 +38,11 @@ class VendorKill extends Command
         $process = new Process(['find', $search_path, '-maxdepth', $this->option('maxdepth'), '-type', 'd', '-name', 'vendor']);
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
         }
 
-        $this->info("⚗️ Filtering valid composer vendor directories...");
+        $this->info('⚗️ Filtering valid composer vendor directories...');
 
         $vendor_dirs = explode(PHP_EOL, trim($process->getOutput()));
 
@@ -60,7 +62,7 @@ class VendorKill extends Command
 
         // Show the total size of the vendor directories
         $this->showTotal($total_size_human, $vendor_dirs);
-        $counter =  1;
+        $counter = 1;
         $selectOptions = [];
         // List the vendor directories with their sizes and project names
         foreach ($vendor_dirs as $dir) {
@@ -78,8 +80,9 @@ class VendorKill extends Command
         }
 
         // Show the total size of the vendor directories again for convenience
-        if ($this->option('full'))
+        if ($this->option('full')) {
             $this->showTotal($total_size_human, $vendor_dirs);
+        }
 
         // Prompt the user to select directories to delete
         $delete_numbers = multiselect(
@@ -90,7 +93,7 @@ class VendorKill extends Command
 
         // Delete the selected directories
         foreach ($delete_numbers as $num) {
-            $dir_to_delete = $vendor_dirs[$num -  1];
+            $dir_to_delete = $vendor_dirs[$num - 1];
             shell_exec("rm -rf {$dir_to_delete}");
             $this->info("Deleted {$dir_to_delete}");
         }
@@ -101,7 +104,7 @@ class VendorKill extends Command
     protected function getVendorTotalSize(array $vendor_dirs): string
     {
         // Calculate the total size of vendor directories
-        $total_size =  0;
+        $total_size = 0;
         foreach ($vendor_dirs as $dir) {
             $size = shell_exec("du -s $dir | cut -f1");
             $total_size += $size;
@@ -112,19 +115,20 @@ class VendorKill extends Command
     }
 
     // Helper function to format the size
-    private function formatSize($size) {
+    private function formatSize($size)
+    {
         $units = ['KB', 'MB', 'GB', 'TB'];
 
-        for ($i =  0; $size >  1024; $i++) {
-            $size /=  1024;
+        for ($i = 0; $size > 1024; $i++) {
+            $size /= 1024;
         }
 
-        return round($size,  2) . ' ' . $units[$i];
+        return round($size, 2) . ' ' . $units[$i];
     }
 
     protected function showTotal(string $total_size_human, array $vendor_dirs): void
     {
-        if (count($vendor_dirs) ===  0) {
+        if (count($vendor_dirs) === 0) {
             $this->info('🥳 No composer vendor directories found in this path.');
             $this->thanks();
             exit(0);

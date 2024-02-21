@@ -38,6 +38,10 @@
             "Tests\\": "tests/"
         }
     },
+    "scripts": {
+        "pint": "./vendor/bin/pint",
+        "pest": "./vendor/bin/pest"
+    },
     "config": {
         "preferred-install": "dist",
         "sort-packages": true,
