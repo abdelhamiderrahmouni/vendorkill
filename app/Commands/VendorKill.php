@@ -15,7 +15,8 @@ class VendorKill extends Command
      * @var string
      */
     protected $signature = 'process {path? : The path to search for vendor directories}
-                                    {--maxdepth=2 : The maximum depth to search for vendor directories}';
+                                    {--maxdepth=2 : The maximum depth to search for vendor directories}
+                                    {--full : Show full details}';
 
     /**
      * The console command description.
@@ -65,15 +66,20 @@ class VendorKill extends Command
         foreach ($vendor_dirs as $dir) {
             $size = $this->formatSize(shell_exec("du -s $dir | cut -f1"));
             $project_name = basename(dirname($dir));
-            $selectOptions[$counter] = "$project_name";
-            $this->components->twoColumnDetail('<options=bold>' . "{$counter}: $project_name" . '</>', '<options=bold>' . $size . '</>');
-            $this->components->twoColumnDetail('Path', $dir);
-            $this->newLine();
+            $selectOptions[$counter] = "$project_name ($size) [$dir]";
+
+            if ($this->option('full')) {
+                $this->components->twoColumnDetail('<options=bold>' . "{$counter}: $project_name" . '</>', '<options=bold>' . $size . '</>');
+                $this->components->twoColumnDetail('Path', $dir);
+                $this->newLine();
+            }
+
             $counter++;
         }
 
         // Show the total size of the vendor directories again for convenience
-        $this->showTotal($total_size_human, $vendor_dirs);
+        if ($this->option('full'))
+            $this->showTotal($total_size_human, $vendor_dirs);
 
         // Prompt the user to select directories to delete
         $delete_numbers = multiselect(
