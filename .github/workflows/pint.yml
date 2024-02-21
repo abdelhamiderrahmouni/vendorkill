@@ -13,7 +13,7 @@ jobs:
             ref: ${{ github.head_ref }}
 
       -   name: Install Composer
-          run: composer install
+          run: composer update -W
 
       -   name: Run Laravel Pint
           run: composer pint
