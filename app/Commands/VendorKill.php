@@ -2,7 +2,6 @@
 
 namespace App\Commands;
 
-use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -32,6 +31,7 @@ class VendorKill extends Command
         $search_path = $this->argument('path') ?? getcwd();
 
         // Find all vendor directories within the search path
+        $this->info("🔍 Searching for vendor directories in $search_path...");
         $process = new Process(['find', $search_path, '-maxdepth', $this->option('maxdepth'), '-type', 'd', '-name', 'vendor']);
         $process->run();
 
@@ -39,8 +39,20 @@ class VendorKill extends Command
             throw new ProcessFailedException($process);
         }
 
+        $this->info("⚗️ Filtering valid composer vendor directories...");
+
         $vendor_dirs = explode(PHP_EOL, trim($process->getOutput()));
 
+        // Filter out vendor directories that have a composer.json file in their parent directory
+        $filtered_vendor_dirs = [];
+        foreach ($vendor_dirs as $vendor_dir) {
+            $parent_dir = dirname($vendor_dir);
+            if (file_exists($parent_dir . DIRECTORY_SEPARATOR . 'composer.json')) {
+                $filtered_vendor_dirs[] = $vendor_dir;
+            }
+        }
+
+        $vendor_dirs = $filtered_vendor_dirs;
         $total_size_human = $this->getVendorTotalSize($vendor_dirs);
 
         $this->newLine();
@@ -50,8 +62,8 @@ class VendorKill extends Command
         $counter =  1;
         $selectOptions = [];
         // List the vendor directories with their sizes and project names
-        foreach ($vendor_dirs as $index => $dir) {
-            $size = shell_exec("du -sh $dir | cut -f1");
+        foreach ($vendor_dirs as $dir) {
+            $size = $this->formatSize(shell_exec("du -s $dir | cut -f1"));
             $project_name = basename(dirname($dir));
             $selectOptions[$counter] = "$project_name";
             $this->components->twoColumnDetail('<options=bold>' . "{$counter}: $project_name" . '</>', '<options=bold>' . $size . '</>');
@@ -104,7 +116,12 @@ class VendorKill extends Command
 
     protected function showTotal(string $total_size_human, array $vendor_dirs): void
     {
-        $this->components->twoColumnDetail('<fg=green;options=bold>Found ' . count($vendor_dirs) . ' vendor directories</>', '<fg=green;options=bold>' . $total_size_human . '</>');
+        if (count($vendor_dirs) ===  0) {
+            $this->info('🥳 No composer vendor directories found in this path.');
+            exit(0);
+        }
+
+        $this->components->twoColumnDetail('🥳 <fg=green;options=bold>Found ' . count($vendor_dirs) . ' vendor directories</>', '<fg=green;options=bold>' . $total_size_human . '</>');
         $this->newLine();
     }
 }
