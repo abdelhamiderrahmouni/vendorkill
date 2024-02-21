@@ -27,8 +27,20 @@ alias vendorkill="~/.config/composer/vendor/bin/vendorkill"
 
 ## Usage
 
-```php
-vendorkill [path] [options: --maxdepth=2]
+```bash
+vendorkill [path: defaults to current path] [options: --maxdepth=2 --full]
+```
+
+```bash
+## Examples
+
+vendorkill # remove vendor folders in current path
+
+vendorkill /path/to/project # remove vendor folders in /path/to/project
+
+vendorkill /path/to/project --maxdepth=4 # remove vendor folders in /path/to/project with maxdepth=4
+
+vendorkill /path/to/project --full # remove vendor folders in /path/to/project and all subdirectories
 ```
 
 ## Update
