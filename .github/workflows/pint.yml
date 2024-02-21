@@ -1,6 +1,7 @@
 name: pint
 
-on: push
+on:
+  [push, workflow_dispatch]
 
 jobs:
   pint:
