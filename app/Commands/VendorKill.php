@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use LaravelZero\Framework\Commands\Command;
-use Spatie\Async\Pool;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -49,6 +48,22 @@ class VendorKill extends Command
     protected array $dirs = [];
 
     /**
+     * Background proc_open handles for size calculations.
+     * Maps dir path => ['proc' => resource, 'pipe' => resource]
+     *
+     * @var array<string, array{proc: resource, pipe: resource}>
+     */
+    protected array $sizeProcs = [];
+
+    /**
+     * Background proc_open handles for deletions.
+     * Maps dir path => resource (proc handle)
+     *
+     * @var array<string, resource>
+     */
+    protected array $deleteProcs = [];
+
+    /**
      * Index of the currently highlighted row.
      */
     protected int $cursor = 0;
@@ -59,7 +74,7 @@ class VendorKill extends Command
     protected int $scrollOffset = 0;
 
     /**
-     * Number of list rows visible at once.
+     * Number of list rows visible at once (clamped to actual count).
      */
     protected int $visibleRows = 20;
 
@@ -72,11 +87,6 @@ class VendorKill extends Command
      * Original stty settings so we can restore them on exit.
      */
     protected string $sttyOriginal = '';
-
-    /**
-     * Pool used for deletion tasks.
-     */
-    protected ?Pool $deletePool = null;
 
     /**
      * Whether the main loop should keep running.
@@ -112,29 +122,8 @@ class VendorKill extends Command
         // Clamp visible rows to actual count
         $this->visibleRows = min($this->visibleRows, count($this->dirs));
 
-        // Phase 2: Build async pool for size calculations
-        $sizePool = Pool::create()
-            ->concurrency(10)
-            ->timeout(300)
-            ->sleepTime(0); // We control the frame rate in the main loop
-
-        foreach ($vendorDirs as $dir) {
-            $sizePool->add(function () use ($dir) {
-                $output = trim((string) shell_exec('du -s ' . escapeshellarg($dir) . ' 2>/dev/null | cut -f1'));
-
-                return ['dir' => $dir, 'size' => (int) $output];
-            })->then(function (array $result) {
-                if ($this->state[$result['dir']]['status'] === 'calculating') {
-                    $this->state[$result['dir']]['size'] = $result['size'];
-                    $this->state[$result['dir']]['status'] = 'ready';
-                }
-            })->catch(function () use ($dir) {
-                if ($this->state[$dir]['status'] === 'calculating') {
-                    $this->state[$dir]['size'] = 0;
-                    $this->state[$dir]['status'] = 'ready';
-                }
-            });
-        }
+        // Phase 2: Launch background du -s processes for all dirs
+        $this->launchSizeProcesses($vendorDirs);
 
         // Phase 3: Enter raw terminal mode and run the interactive loop
         $this->enableRawMode();
@@ -143,19 +132,13 @@ class VendorKill extends Command
         $this->printHelp();
         $this->renderList();
 
-        // Create the deletion pool (persistent, reused)
-        $this->deletePool = Pool::create()
-            ->concurrency(5)
-            ->timeout(300)
-            ->sleepTime(0); // We control the frame rate in the main loop
-
         try {
             while ($this->running) {
-                // Tick size pool (non-blocking)
-                $this->tickPool($sizePool);
+                // Poll size processes
+                $this->pollSizeProcesses();
 
-                // Tick delete pool (non-blocking)
-                $this->tickPool($this->deletePool);
+                // Poll deletion processes
+                $this->pollDeleteProcesses();
 
                 // Read keyboard input (non-blocking)
                 $this->handleInput();
@@ -163,11 +146,11 @@ class VendorKill extends Command
                 // Re-render
                 $this->reRenderList();
 
-                // Check if we're done (all items are deleted or ready, and user pressed q/ctrl-c)
                 usleep(30000); // ~33 fps
             }
         } finally {
             $this->disableRawMode();
+            $this->cleanupProcesses();
         }
 
         $this->newLine();
@@ -178,92 +161,166 @@ class VendorKill extends Command
     }
 
     /**
-     * Tick a pool once without blocking.
-     * spatie/async Pool::wait() is blocking; we use Reflection to call
-     * the internal loop body a single time so we stay non-blocking.
+     * Launch one background `du -s` process per directory.
+     *
+     * @param  string[]  $dirs
      */
-    protected function tickPool(Pool $pool): void
+    protected function launchSizeProcesses(array $dirs): void
     {
-        // Pool::wait() internally calls $pool->notify() in a loop.
-        // We mimic one iteration: process finished children without blocking.
-        try {
-            // Use the public API: check if there's anything to process
-            // by calling wait with a callback that immediately returns true (stop early)
-            // But spatie/async doesn't expose a non-blocking tick directly.
-            // Instead we rely on the fact that Pool internally uses pcntl_waitpid with WNOHANG
-            // when we call wait() with a callback returning true after one pass.
-            $pool->wait(function () {
-                return true; // stop after first tick
-            });
-        } catch (\Throwable) {
-            // Ignore errors during tick (e.g. pool already finished)
+        $concurrency = 10;
+        $pending = $dirs;
+
+        // Launch up to $concurrency processes immediately
+        $toStart = array_splice($pending, 0, $concurrency);
+
+        foreach ($toStart as $dir) {
+            $this->startSizeProcess($dir);
         }
+
+        // Store the rest to launch as slots free up
+        // (we'll handle this in pollSizeProcesses via a queue)
+        $this->sizePending = $pending;
     }
 
     /**
-     * Read a single keypress (non-blocking) and handle it.
+     * Pending dirs not yet started (overflow from concurrency limit).
+     *
+     * @var string[]
      */
-    protected function handleInput(): void
-    {
-        $byte = @fread(STDIN, 1);
+    protected array $sizePending = [];
 
-        if ($byte === false || $byte === '') {
+    /**
+     * Start a background du -s process for one directory.
+     */
+    protected function startSizeProcess(string $dir): void
+    {
+        $descriptors = [
+            0 => ['pipe', 'r'],  // stdin (unused)
+            1 => ['pipe', 'w'],  // stdout
+            2 => ['pipe', 'w'],  // stderr (discard)
+        ];
+
+        $proc = proc_open(
+            ['du', '-s', $dir],
+            $descriptors,
+            $pipes
+        );
+
+        if (! is_resource($proc)) {
+            // Fallback: mark as 0 immediately
+            $this->state[$dir]['size'] = 0;
+            $this->state[$dir]['status'] = 'ready';
+
             return;
         }
 
-        $count = count($this->dirs);
+        // Make stdout non-blocking
+        stream_set_blocking($pipes[1], false);
+        fclose($pipes[0]);
+        fclose($pipes[2]);
 
-        if ($byte === "\033") {
-            // Escape sequence — read more bytes
-            $seq = @fread(STDIN, 2);
-            if ($seq === '[A') {
-                // Up arrow
-                if ($this->cursor > 0) {
-                    $this->cursor--;
-                    if ($this->cursor < $this->scrollOffset) {
-                        $this->scrollOffset = $this->cursor;
-                    }
-                }
-            } elseif ($seq === '[B') {
-                // Down arrow
-                if ($this->cursor < $count - 1) {
-                    $this->cursor++;
-                    if ($this->cursor >= $this->scrollOffset + $this->visibleRows) {
-                        $this->scrollOffset = $this->cursor - $this->visibleRows + 1;
-                    }
-                }
-            }
-        } elseif ($byte === ' ') {
-            // Space — delete item under cursor
-            $dir = $this->dirs[$this->cursor];
-            $status = $this->state[$dir]['status'];
+        $this->sizeProcs[$dir] = ['proc' => $proc, 'pipe' => $pipes[1]];
+    }
 
-            if ($status === 'ready') {
-                $this->state[$dir]['status'] = 'deleting';
-                $this->startDeletion($dir);
+    /**
+     * Poll all in-flight size processes; harvest completed ones.
+     */
+    protected function pollSizeProcesses(): void
+    {
+        foreach ($this->sizeProcs as $dir => $entry) {
+            $status = proc_get_status($entry['proc']);
+
+            if ($status['running']) {
+                continue;
             }
-        } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
-            // q, Ctrl-C, or Ctrl-D — quit
-            $this->running = false;
+
+            // Process finished — read its output
+            $raw = stream_get_contents($entry['pipe']);
+            $output = trim((string) $raw);
+            $size = $output !== '' ? (int) explode("\t", $output)[0] : 0;
+
+            $this->state[$dir]['size'] = $size;
+            $this->state[$dir]['status'] = 'ready';
+
+            fclose($entry['pipe']);
+            proc_close($entry['proc']);
+            unset($this->sizeProcs[$dir]);
+
+            // Start a pending process if any
+            if (! empty($this->sizePending)) {
+                $next = array_shift($this->sizePending);
+                $this->startSizeProcess($next);
+            }
         }
     }
 
     /**
-     * Enqueue an async deletion task for the given directory.
+     * Launch a background rm -rf process for one directory.
      */
-    protected function startDeletion(string $dir): void
+    protected function startDeleteProcess(string $dir): void
     {
-        $this->deletePool->add(function () use ($dir) {
-            $process = new Process(['rm', '-rf', $dir]);
-            $process->run();
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
 
-            return ['dir' => $dir, 'success' => $process->isSuccessful()];
-        })->then(function (array $result) {
-            $this->state[$result['dir']]['status'] = 'deleted';
-        })->catch(function () use ($dir) {
-            // Mark as deleted anyway so the UI doesn't stay stuck
+        $proc = proc_open(
+            ['rm', '-rf', $dir],
+            $descriptors,
+            $pipes
+        );
+
+        if (! is_resource($proc)) {
             $this->state[$dir]['status'] = 'deleted';
-        });
+
+            return;
+        }
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $this->deleteProcs[$dir] = $proc;
+    }
+
+    /**
+     * Poll all in-flight deletion processes; harvest completed ones.
+     */
+    protected function pollDeleteProcesses(): void
+    {
+        foreach ($this->deleteProcs as $dir => $proc) {
+            $status = proc_get_status($proc);
+
+            if ($status['running']) {
+                continue;
+            }
+
+            proc_close($proc);
+            unset($this->deleteProcs[$dir]);
+
+            $this->state[$dir]['status'] = 'deleted';
+        }
+    }
+
+    /**
+     * Kill and close any still-running background processes on exit.
+     */
+    protected function cleanupProcesses(): void
+    {
+        foreach ($this->sizeProcs as $entry) {
+            fclose($entry['pipe']);
+            proc_terminate($entry['proc']);
+            proc_close($entry['proc']);
+        }
+
+        foreach ($this->deleteProcs as $proc) {
+            proc_terminate($proc);
+            proc_close($proc);
+        }
+
+        $this->sizeProcs = [];
+        $this->deleteProcs = [];
     }
 
     /**
@@ -316,6 +373,54 @@ class VendorKill extends Command
 
             return file_exists($parentDir . DIRECTORY_SEPARATOR . 'composer.json');
         }));
+    }
+
+    /**
+     * Read a single keypress (non-blocking) and handle it.
+     */
+    protected function handleInput(): void
+    {
+        $byte = @fread(STDIN, 1);
+
+        if ($byte === false || $byte === '') {
+            return;
+        }
+
+        $count = count($this->dirs);
+
+        if ($byte === "\033") {
+            // Escape sequence — read more bytes
+            $seq = @fread(STDIN, 2);
+            if ($seq === '[A') {
+                // Up arrow
+                if ($this->cursor > 0) {
+                    $this->cursor--;
+                    if ($this->cursor < $this->scrollOffset) {
+                        $this->scrollOffset = $this->cursor;
+                    }
+                }
+            } elseif ($seq === '[B') {
+                // Down arrow
+                if ($this->cursor < $count - 1) {
+                    $this->cursor++;
+                    if ($this->cursor >= $this->scrollOffset + $this->visibleRows) {
+                        $this->scrollOffset = $this->cursor - $this->visibleRows + 1;
+                    }
+                }
+            }
+        } elseif ($byte === ' ') {
+            // Space — delete item under cursor
+            $dir = $this->dirs[$this->cursor];
+            $status = $this->state[$dir]['status'];
+
+            if ($status === 'ready') {
+                $this->state[$dir]['status'] = 'deleting';
+                $this->startDeleteProcess($dir);
+            }
+        } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
+            // q, Ctrl-C, or Ctrl-D — quit
+            $this->running = false;
+        }
     }
 
     /**
@@ -425,13 +530,12 @@ class VendorKill extends Command
 
         // Scroll indicator
         if ($count > $this->visibleRows) {
-            $scrollInfo = sprintf(
+            $this->line(sprintf(
                 "\033[K  <fg=gray>%d–%d of %d</>",
                 $this->scrollOffset + 1,
                 $visibleEnd,
                 $count
-            );
-            $this->line($scrollInfo);
+            ));
             $this->renderedLines++;
         }
 
@@ -441,7 +545,7 @@ class VendorKill extends Command
             : '<fg=gray>' . $this->formatSize($totalSize) . ' (calculating...)</>';
 
         $deletedStr = $deletedCount > 0
-            ? "  <fg=green>$deletedCount deleted</>"
+            ? "  <fg=green>{$deletedCount} deleted</>"
             : '';
 
         $this->line(sprintf(
@@ -463,8 +567,9 @@ class VendorKill extends Command
         $freedKb = array_sum(array_column($deleted, 'size'));
 
         if (count($deleted) > 0) {
+            $count = count($deleted);
             $this->components->twoColumnDetail(
-                '<fg=green;options=bold>Deleted ' . count($deleted) . ' vendor ' . (count($deleted) === 1 ? 'directory' : 'directories') . '</>',
+                "<fg=green;options=bold>Deleted {$count} vendor " . ($count === 1 ? 'directory' : 'directories') . '</>',
                 '<fg=green;options=bold>' . $this->formatSize($freedKb) . ' freed</>'
             );
             $this->newLine();
@@ -496,12 +601,12 @@ class VendorKill extends Command
         // Hide cursor
         $this->output->write("\033[?25l");
 
-        // Register a shutdown function to restore terminal state even on fatal errors
+        // Restore terminal on fatal shutdown
         register_shutdown_function(function () {
             $this->disableRawMode();
         });
 
-        // Handle SIGINT (Ctrl-C) gracefully
+        // Handle SIGINT gracefully (belt-and-suspenders; Ctrl-C also comes via \x03 in raw mode)
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGINT, function () {
                 $this->running = false;
