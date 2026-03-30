@@ -18,7 +18,8 @@
         "php": "^8.1|^8.2",
         "laminas/laminas-text": "^2.10",
         "laravel/prompts": "^0.1.15",
-        "nunomaduro/termwind": "^1.15.1"
+        "nunomaduro/termwind": "^1.15.1",
+        "spatie/async": "^1.6"
     },
     "require-dev": {
         "laravel/pint": "^1.13",
