@@ -202,7 +202,7 @@ trait TuiCommand
         $proc = proc_open(['rm', '-rf', $dir], $descriptors, $pipes);
 
         if (! is_resource($proc)) {
-            $this->state[$dir]['status'] = 'deleted';
+            $this->state[$dir]['status'] = 'failed';
 
             return;
         }
@@ -226,10 +226,10 @@ trait TuiCommand
                 continue;
             }
 
-            proc_close($proc);
+            $exitCode = proc_close($proc);
             unset($this->deleteProcs[$dir]);
 
-            $this->state[$dir]['status'] = 'deleted';
+            $this->state[$dir]['status'] = $exitCode === 0 ? 'deleted' : 'failed';
         }
     }
 
@@ -309,7 +309,7 @@ trait TuiCommand
             $dir = $visibleDirs[$this->cursor];
             $status = $this->state[$dir]['status'];
 
-            if ($status === 'ready') {
+            if ($status === 'ready' || $status === 'failed') {
                 $this->state[$dir]['status'] = 'deleting';
                 $this->startDeleteProcess($dir);
             }

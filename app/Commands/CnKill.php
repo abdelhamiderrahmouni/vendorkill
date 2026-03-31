@@ -38,6 +38,7 @@ class CnKill extends Command
      *   'ready'       — size known, awaiting user action
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
+     *   'failed'      — rm -rf failed
      *
      * @var array<string, array{project: string, size: int|null, status: string, type: string, lastModified: int|null, order: int}>
      */
@@ -115,8 +116,16 @@ class CnKill extends Command
 
     public function handle(): int
     {
-        $searchPath = $this->argument('path') ?? getcwd();
-        $this->searchPath = rtrim((string) realpath($searchPath), DIRECTORY_SEPARATOR);
+        $searchPath = (string) ($this->argument('path') ?? getcwd());
+        $resolvedSearchPath = realpath($searchPath);
+
+        if ($resolvedSearchPath === false || ! is_dir($resolvedSearchPath)) {
+            $this->error('The provided path does not exist or is not a directory: ' . $searchPath);
+
+            return 1;
+        }
+
+        $this->searchPath = $this->normalizePath($resolvedSearchPath);
 
         // Cache options once — avoids repeated option() calls in the hot render loop
         $this->allMode = (bool) $this->option('all');
@@ -290,6 +299,13 @@ class CnKill extends Command
         fclose($pipes[2]);
 
         $this->findProc = ['proc' => $proc, 'pipe' => $pipes[1], 'buf' => ''];
+    }
+
+    protected function normalizePath(string $path): string
+    {
+        $trimmed = rtrim($path, DIRECTORY_SEPARATOR);
+
+        return $trimmed === '' ? DIRECTORY_SEPARATOR : $trimmed;
     }
 
     /**
@@ -564,6 +580,7 @@ class CnKill extends Command
             'ready' => ['<fg=yellow>' . $this->formatSize($size) . '</>', $this->formatSize($size)],
             'deleting' => ['<fg=yellow;options=bold>deleting...</>', 'deleting...'],
             'deleted' => ['<fg=green;options=bold>deleted ✓</>', 'deleted ✓'],
+            'failed' => ['<fg=red;options=bold>delete failed</>', 'delete failed'],
             default => ['', ''],
         };
     }

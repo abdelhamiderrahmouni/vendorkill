@@ -35,6 +35,7 @@ class CacheKill extends Command
      *   'ready'       — size known, awaiting user action
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
+     *   'failed'      — rm -rf failed
      *
      * @var array<string, array{label: string, type: string, size: int|null, status: string, lastModified: int|null, order: int}>
      */
@@ -287,6 +288,7 @@ class CacheKill extends Command
             'ready' => ['  <fg=yellow>' . $this->formatSize($size) . '</>', '  ' . $this->formatSize($size)],
             'deleting' => ['  <fg=yellow;options=bold>deleting...</>', '  deleting...'],
             'deleted' => ['  <fg=green;options=bold>deleted ✓</>', '  deleted ✓'],
+            'failed' => ['  <fg=red;options=bold>delete failed</>', '  delete failed'],
             default => ['', ''],
         };
     }
