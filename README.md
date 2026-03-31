@@ -1,27 +1,34 @@
 # CNKill
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/run-tests.yml?branch=master&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3Arun-tests+branch%3Amaster)
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3A"pint"+branch%3Amaster)
 [![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
 
 A Blazing Fast, Interactive TUI tool (like `npkill`) to find and delete `vendor/` and `node_modules/` directories in your old projects — freeing up disk space fast.
 
 ## Installation && Update
+We provide multiple installation methods to suit your preferences. The recommended way is the standalone executable for Linux and macOS.
 
-Quick install (Linux/macOS, no system PHP required):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/main/install.sh | sh
-```
-
-System-wide install (requires sudo):
+1. Quick install (Linux/macOS, standalone executable):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/main/install.sh | sh -s -- --system
+curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/master/install.sh | sh
 ```
 
-Install globally via Composer:
+2. System-wide install (requires sudo):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/master/install.sh | sh -s -- --system
+```
+
+3. Install via cpx (the npx for PHP):
+
+```bash
+cpx abdelhamiderrahmouni/cnkill
+```
+
+4. Install globally via Composer:
 
 ```bash
 composer global require abdelhamiderrahmouni/cnkill
