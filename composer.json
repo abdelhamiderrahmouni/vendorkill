@@ -17,7 +17,8 @@
     "require": {
         "php": "^8.1|^8.2",
         "laminas/laminas-text": "^2.10",
-        "nunomaduro/termwind": "^1.15.1"
+        "nunomaduro/termwind": "^1.15.1",
+        "ext-pcntl": "*"
     },
     "require-dev": {
         "laravel/pint": "^1.13",
