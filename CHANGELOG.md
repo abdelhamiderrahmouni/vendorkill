@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.9](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.9) (2026-03-31)
+
+### Code Refactoring
+
+- removed pint workflow. ([15f485e](https://github.com/abdelhamiderrahmouni/vendorkill/commit/15f485e14d2a8179f3f986d09e0fedb656ce9c48))
 ## [0.4.8](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.8) (2026-03-31)
 
 ### Bug Fixes
