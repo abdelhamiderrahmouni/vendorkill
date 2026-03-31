@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.4](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.4) (2026-03-31)
+
+### Features
+
+- add self-contained release binaries and installer ([c5daa78](https://github.com/abdelhamiderrahmouni/vendorkill/commit/c5daa788c1c66a04b1295d7ad23979982cc376e9))
 ## [0.4.3](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.3) (2026-03-31)
 
 ### Documentation
