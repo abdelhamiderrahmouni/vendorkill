@@ -172,6 +172,11 @@ class VendorKill extends Command
                 // Re-render
                 $this->reRenderList();
 
+                // Auto-exit when search is done and nothing was found
+                if ($this->findDone && empty($this->dirs)) {
+                    $this->running = false;
+                }
+
                 usleep(50000); // ~20 fps — comfortable for a TUI
             }
         } finally {
@@ -662,8 +667,8 @@ class VendorKill extends Command
 
         $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
 
-        // Empty state while searching
-        if ($count === 0) {
+        // Empty state while searching — hide once search is done (status bar shows "done")
+        if ($count === 0 && ! $this->findDone) {
             $spinner = $this->spinnerFrames[$this->spinnerFrame];
             $this->line("\033[K  <fg=gray>{$spinner} Searching...</>");
             $this->renderedLines++;
