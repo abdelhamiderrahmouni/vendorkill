@@ -142,7 +142,7 @@ class CnKill extends Command
         // Enter raw mode and show the UI immediately
         $this->enableRawMode();
 
-        $this->newLine();
+        $this->printHeader();
         $this->printHelp();
         $this->renderList();
 
@@ -614,6 +614,25 @@ class CnKill extends Command
         $this->visibleRows = max(1, intdiv($termHeight - $reserved, 3));
     }
 
+    protected function printHeader(): void
+    {
+        $art = [
+            '   ██████╗███╗   ██╗██╗  ██╗██╗██╗     ██╗     ',
+            '  ██╔════╝████╗  ██║██║ ██╔╝██║██║     ██║     ',
+            '  ██║     ██╔██╗ ██║█████╔╝ ██║██║     ██║     ',
+            '  ██║     ██║╚██╗██║██╔═██╗ ██║██║     ██║     ',
+            '  ╚██████╗██║ ╚████║██║  ██╗██║███████╗███████╗',
+            '   ╚═════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝',
+        ];
+
+        $this->newLine();
+        foreach ($art as $line) {
+            $this->line('<fg=blue>' . $line . '</>');
+        }
+        $this->line('  <fg=gray>Remove composer vendor and node_modules directories in your projects to save disk space.</>');
+        $this->newLine();
+    }
+
     protected function printHelp(): void
     {
         $this->line('  <fg=gray>↑↓ navigate   <fg=green>space</> delete   <fg=red>q</> quit</>');
@@ -632,8 +651,8 @@ class CnKill extends Command
      */
     protected function eraseTui(): void
     {
-        // header = 1 newLine() + 1 help line + 1 newLine() = 3 lines printed before renderList()
-        $headerLines = 3;
+        // header = 1 newLine + 6 art lines + 1 description + 1 newLine + 1 help + 1 newLine = 11
+        $headerLines = 11;
         $total = $headerLines + $this->renderedLines;
 
         if ($total > 0) {
