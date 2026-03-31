@@ -613,6 +613,22 @@ class CnKill extends Command
                         $this->scrollOffset = $this->cursor - $this->visibleRows + 1;
                     }
                 }
+            } elseif ($seq === '[C') {
+                // Right arrow — page forward
+                if ($count > 0) {
+                    $newOffset = min($this->scrollOffset + $this->visibleRows, max(0, $count - $this->visibleRows));
+                    $delta = $newOffset - $this->scrollOffset;
+                    $this->scrollOffset = $newOffset;
+                    $this->cursor = min($this->cursor + $delta, $count - 1);
+                }
+            } elseif ($seq === '[D') {
+                // Left arrow — page backward
+                if ($count > 0) {
+                    $newOffset = max($this->scrollOffset - $this->visibleRows, 0);
+                    $delta = $this->scrollOffset - $newOffset;
+                    $this->scrollOffset = $newOffset;
+                    $this->cursor = max($this->cursor - $delta, 0);
+                }
             }
         } elseif ($byte === ' ') {
             if ($count === 0) {
@@ -691,7 +707,7 @@ class CnKill extends Command
 
     protected function printHelp(): void
     {
-        $this->line('  <fg=gray>↑↓ navigate   <fg=green>space</> delete   <fg=red>q</> quit</>');
+        $this->line('  <fg=gray>↑↓ navigate   <fg=blue>←→ page</>  <fg=green>space</> delete   <fg=red>q</> quit</>');
         $this->newLine();
 
         $this->headerLines += 2; // help line + blank line
