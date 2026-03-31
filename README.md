@@ -55,6 +55,7 @@ cnkill cache --sort=modified  # sort caches by last modified
 | `↑` / `↓` | Navigate the list |
 | `←` / `→` | Page through the list |
 | `s` | Cycle sort mode |
+| `Shift + s` | Toggle sort direction |
 | `Space` | Delete the highlighted directory |
 | `q` / `Ctrl-C` | Quit |
 
