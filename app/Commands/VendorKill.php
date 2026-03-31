@@ -724,9 +724,15 @@ class VendorKill extends Command
                     $badge = '';
             }
 
-            // Right-align badge: " ▶ " = 3 chars, badge + 1 space padding on right
-            // Total line: 1 (leading space) + 2 (indicator) + project + gap + badge + 1 = termWidth
-            $prefixLen = 1 + 2; // leading space + indicator (▶ or spaces = 2 visible chars)
+            // Number prefix: right-padded to the width of the largest index, e.g. " 1." " 2." "10."
+            $numWidth = mb_strlen((string) $count); // digits in total count
+            $numberText = str_pad((string) ($i + 1), $numWidth, ' ', STR_PAD_LEFT) . '.';
+            $number = $info['status'] === 'deleted'
+                ? "<fg=gray>{$numberText}</>"
+                : ($isActive ? "<fg=cyan>{$numberText}</>" : "<fg=gray>{$numberText}</>");
+
+            // prefixLen = 1 (leading space) + numWidth + 1 (dot) + 1 (space) + 2 (indicator) = numWidth + 5
+            $prefixLen = 1 + $numWidth + 1 + 1 + 2;
             $badgePad = 1;      // 1 space before right edge
 
             // In --all mode prepend a type tag to the badge so the user can distinguish dirs
@@ -752,19 +758,19 @@ class VendorKill extends Command
                 ? "<fg=gray>{$projectPlain}</>"
                 : ($isActive ? "<options=bold;fg=cyan>{$projectPlain}</>" : "<options=bold>{$projectPlain}</>");
 
-            $this->line(sprintf("\033[K %s%s%s%s", $indicator, $displayProject, $typeTag, $badge));
+            $this->line(sprintf("\033[K %s %s%s%s%s", $number, $indicator, $displayProject, $typeTag, $badge));
             $this->renderedLines++;
 
+            // Path: aligned to same column as project name (prefixLen spaces)
             $pathColor = $info['status'] === 'deleted' ? 'gray' : ($isActive ? 'cyan' : 'gray');
             $relativePath = ltrim(substr($dir, strlen($this->searchPath)), DIRECTORY_SEPARATOR);
             $displayPath = $relativePath ?: $dir;
-            // Truncate long paths with ellipsis on the left (keep the end, which is more useful)
-            $pathIndent = 5; // "     " prefix
+            $pathIndent = $prefixLen; // align with project name
             $maxPathWidth = $this->termWidth - $pathIndent;
             if (mb_strlen($displayPath) > $maxPathWidth) {
                 $displayPath = '…' . mb_substr($displayPath, mb_strlen($displayPath) - $maxPathWidth + 1);
             }
-            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $displayPath));
+            $this->line(sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $pathIndent), $pathColor, $displayPath));
             $this->renderedLines++;
 
             $this->line("\033[K");
