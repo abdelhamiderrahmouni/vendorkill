@@ -115,7 +115,7 @@ trait TuiCommand
         } finally {
             $this->disableRawMode();
             $this->cleanupProcesses();
-            $this->eraseTui();
+            $this->eraseTui(preserveHeader: true);
         }
     }
 
@@ -616,9 +616,9 @@ trait TuiCommand
         return (int) ($this->state[$dir]['order'] ?? 0);
     }
 
-    protected function eraseTui(): void
+    protected function eraseTui(bool $preserveHeader = false): void
     {
-        $total = $this->headerLines + $this->renderedLines;
+        $total = $preserveHeader ? $this->renderedLines : $this->headerLines + $this->renderedLines;
 
         if ($total > 0) {
             $this->output->write(sprintf("\033[%dA\033[J", $total));
