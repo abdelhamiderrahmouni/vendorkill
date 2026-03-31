@@ -14,14 +14,16 @@ class VendorKill extends Command
      * @var string
      */
     protected $signature = 'process {path? : The path to search for vendor directories}
-                                    {--maxdepth= : The maximum depth to search for vendor directories}';
+                                    {--maxdepth= : The maximum depth to search for vendor directories}
+                                    {--node : Search for node_modules directories instead of vendor}
+                                    {--all : Search for both vendor and node_modules directories}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Delete composer vendor directories.';
+    protected $description = 'Delete composer vendor / node_modules directories.';
 
     /**
      * State array tracking each vendor directory's info.
@@ -33,7 +35,7 @@ class VendorKill extends Command
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
      *
-     * @var array<string, array{project: string, size: int|null, status: string}>
+     * @var array<string, array{project: string, size: int|null, status: string, type: string}>
      */
     protected array $state = [];
 
@@ -201,6 +203,8 @@ class VendorKill extends Command
     protected function startFindProcess(string $searchPath): void
     {
         $maxdepth = $this->option('maxdepth');
+        $nodeMode = $this->option('node');
+        $allMode = $this->option('all');
 
         $args = ['find', $searchPath];
 
@@ -209,19 +213,51 @@ class VendorKill extends Command
             $args[] = $maxdepth;
         }
 
-        $args = array_merge($args, [
-            '(',
-            '-name', 'node_modules',
-            '-prune',
-            ')',
-            '-o',
-            '(',
-            '-type', 'd',
-            '-name', 'vendor',
-            '-prune',
-            '-print',
-            ')',
-        ]);
+        if ($allMode) {
+            // Prune+print both vendor and node_modules
+            $args = array_merge($args, [
+                '(',
+                '-type', 'd',
+                '(',
+                '-name', 'vendor',
+                '-o',
+                '-name', 'node_modules',
+                ')',
+                '-prune',
+                '-print',
+                ')',
+            ]);
+        } elseif ($nodeMode) {
+            // Prune vendor (don't print), prune+print node_modules
+            $args = array_merge($args, [
+                '(',
+                '-name', 'vendor',
+                '-prune',
+                ')',
+                '-o',
+                '(',
+                '-type', 'd',
+                '-name', 'node_modules',
+                '-prune',
+                '-print',
+                ')',
+            ]);
+        } else {
+            // Default: prune node_modules (don't print), prune+print vendor
+            $args = array_merge($args, [
+                '(',
+                '-name', 'node_modules',
+                '-prune',
+                ')',
+                '-o',
+                '(',
+                '-type', 'd',
+                '-name', 'vendor',
+                '-prune',
+                '-print',
+                ')',
+            ]);
+        }
 
         $descriptors = [
             0 => ['pipe', 'r'],  // stdin  (unused)
@@ -271,23 +307,7 @@ class VendorKill extends Command
                 continue;
             }
 
-            // Filter: only composer projects
-            if (! file_exists(dirname($dir) . DIRECTORY_SEPARATOR . 'composer.json')) {
-                continue;
-            }
-
-            // New dir discovered — add to state immediately
-            if (! isset($this->state[$dir])) {
-                $this->dirs[] = $dir;
-                $this->state[$dir] = [
-                    'project' => basename(dirname($dir)),
-                    'size' => null,
-                    'status' => 'calculating',
-                ];
-
-                // Kick off size calculation
-                $this->enqueueSizeProcess($dir);
-            }
+            $this->registerDir($dir);
         }
 
         // Check if find has exited
@@ -308,19 +328,7 @@ class VendorKill extends Command
                         continue;
                     }
 
-                    if (! file_exists(dirname($dir) . DIRECTORY_SEPARATOR . 'composer.json')) {
-                        continue;
-                    }
-
-                    if (! isset($this->state[$dir])) {
-                        $this->dirs[] = $dir;
-                        $this->state[$dir] = [
-                            'project' => basename(dirname($dir)),
-                            'size' => null,
-                            'status' => 'calculating',
-                        ];
-                        $this->enqueueSizeProcess($dir);
-                    }
+                    $this->registerDir($dir);
                 }
             }
 
@@ -329,6 +337,44 @@ class VendorKill extends Command
             $this->findProc = null;
             $this->findDone = true;
         }
+    }
+
+    /**
+     * Validate and register a discovered directory into state.
+     * Determines the type (vendor/node) and checks the manifest file exists.
+     */
+    protected function registerDir(string $dir): void
+    {
+        if (isset($this->state[$dir])) {
+            return;
+        }
+
+        $parent = dirname($dir);
+        $name = basename($dir);
+
+        // Determine type and required manifest
+        if ($name === 'node_modules') {
+            $type = 'node';
+            $manifest = $parent . DIRECTORY_SEPARATOR . 'package.json';
+        } else {
+            $type = 'vendor';
+            $manifest = $parent . DIRECTORY_SEPARATOR . 'composer.json';
+        }
+
+        // Only include dirs that belong to a real project
+        if (! file_exists($manifest)) {
+            return;
+        }
+
+        $this->dirs[] = $dir;
+        $this->state[$dir] = [
+            'project' => basename($parent),
+            'size' => null,
+            'status' => 'calculating',
+            'type' => $type,
+        ];
+
+        $this->enqueueSizeProcess($dir);
     }
 
     // -------------------------------------------------------------------------
@@ -660,7 +706,22 @@ class VendorKill extends Command
             // Total line: 1 (leading space) + 2 (indicator) + project + gap + badge + 1 = termWidth
             $prefixLen = 1 + 2; // leading space + indicator (▶ or spaces = 2 visible chars)
             $badgePad = 1;      // 1 space before right edge
-            $projectWidth = max(10, $this->termWidth - $prefixLen - mb_strlen($badgeText) - $badgePad);
+
+            // In --all mode prepend a type tag to the badge so the user can distinguish dirs
+            $typeTag = '';
+            $typeTagText = '';
+            if ($this->option('all')) {
+                if ($info['type'] === 'node') {
+                    $typeTagText = '[node] ';
+                    $typeTag = '<fg=blue>' . $typeTagText . '</>';
+                } else {
+                    $typeTagText = '[vendor] ';
+                    $typeTag = '<fg=magenta>' . $typeTagText . '</>';
+                }
+            }
+
+            $rightWidth = mb_strlen($typeTagText) + mb_strlen($badgeText) + $badgePad;
+            $projectWidth = max(10, $this->termWidth - $prefixLen - $rightWidth);
             $projectPlain = mb_strlen($info['project']) > $projectWidth
                 ? mb_substr($info['project'], 0, $projectWidth - 1) . '…'
                 : str_pad($info['project'], $projectWidth);
@@ -669,7 +730,7 @@ class VendorKill extends Command
                 ? "<fg=gray>{$projectPlain}</>"
                 : ($isActive ? "<options=bold;fg=cyan>{$projectPlain}</>" : "<options=bold>{$projectPlain}</>");
 
-            $this->line(sprintf("\033[K %s%s%s", $indicator, $displayProject, $badge));
+            $this->line(sprintf("\033[K %s%s%s%s", $indicator, $displayProject, $typeTag, $badge));
             $this->renderedLines++;
 
             $pathColor = $info['status'] === 'deleted' ? 'gray' : ($isActive ? 'cyan' : 'gray');
