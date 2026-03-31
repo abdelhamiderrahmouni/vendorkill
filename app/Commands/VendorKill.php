@@ -731,8 +731,8 @@ class VendorKill extends Command
                 ? "<fg=gray>{$numberText}</>"
                 : ($isActive ? "<fg=cyan>{$numberText}</>" : "<fg=gray>{$numberText}</>");
 
-            // prefixLen = 1 (leading space) + numWidth + 1 (dot) + 1 (space) + 2 (indicator) = numWidth + 5
-            $prefixLen = 1 + $numWidth + 1 + 1 + 2;
+            // prefixLen = 1 (leading space) + 2 (indicator) + 1 (space) + numWidth + 1 (dot) + 1 (space)
+            $prefixLen = 1 + 2 + 1 + $numWidth + 1 + 1;
             $badgePad = 1;      // 1 space before right edge
 
             // In --all mode prepend a type tag to the badge so the user can distinguish dirs
@@ -758,7 +758,7 @@ class VendorKill extends Command
                 ? "<fg=gray>{$projectPlain}</>"
                 : ($isActive ? "<options=bold;fg=cyan>{$projectPlain}</>" : "<options=bold>{$projectPlain}</>");
 
-            $this->line(sprintf("\033[K %s %s%s%s%s", $number, $indicator, $displayProject, $typeTag, $badge));
+            $this->line(sprintf("\033[K %s%s %s%s%s", $indicator, $number, $displayProject, $typeTag, $badge));
             $this->renderedLines++;
 
             // Path: aligned to same column as project name (prefixLen spaces)
