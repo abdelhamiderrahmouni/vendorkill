@@ -2,6 +2,6 @@
 
 declare(strict_types=1);
 
-it('inspires artisans', function () {
-    $this->artisan('inspire')->assertExitCode(0);
+it('lists available commands', function () {
+    $this->artisan('list')->assertExitCode(0);
 });

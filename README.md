@@ -41,7 +41,11 @@ cnkill /path/to/projects --node # find node_modules/ only
 
 cnkill /path/to/projects --all  # find both vendor/ and node_modules/
 
+cnkill /path/to/projects --sort=size  # sort by size
+
 cnkill /path/to/projects --maxdepth=4  # limit search depth
+
+cnkill cache --sort=modified  # sort caches by last modified
 ```
 
 ## Controls
@@ -49,6 +53,8 @@ cnkill /path/to/projects --maxdepth=4  # limit search depth
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Navigate the list |
+| `←` / `→` | Page through the list |
+| `s` | Cycle sort mode |
 | `Space` | Delete the highlighted directory |
 | `q` / `Ctrl-C` | Quit |
 

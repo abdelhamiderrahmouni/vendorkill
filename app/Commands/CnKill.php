@@ -17,9 +17,10 @@ class CnKill extends Command
      * @var string
      */
     protected $signature = 'process {path? : The path to search for vendor directories}
-                                    {--maxdepth= : The maximum depth to search for vendor directories}
-                                    {--node : Search for node_modules directories instead of vendor}
-                                    {--all : Search for both vendor and node_modules directories}';
+                                     {--maxdepth= : The maximum depth to search for vendor directories}
+                                     {--node : Search for node_modules directories instead of vendor}
+                                     {--all : Search for both vendor and node_modules directories}
+                                     {--sort=default : Sort by default, name, size, or modified}';
 
     /**
      * The console command description.
@@ -38,7 +39,7 @@ class CnKill extends Command
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
      *
-     * @var array<string, array{project: string, size: int|null, status: string, type: string, lastModified: int|null}>
+     * @var array<string, array{project: string, size: int|null, status: string, type: string, lastModified: int|null, order: int}>
      */
     protected array $state = [];
 
@@ -126,6 +127,10 @@ class CnKill extends Command
         if ($maxdepth !== null && (! ctype_digit((string) $maxdepth) || (int) $maxdepth < 1)) {
             $this->error('--maxdepth must be a positive integer.');
 
+            return 1;
+        }
+
+        if (! $this->initializeSortMode()) {
             return 1;
         }
 
@@ -386,6 +391,7 @@ class CnKill extends Command
             return;
         }
 
+        $order = count($this->dirs);
         $this->dirs[] = $dir;
         $this->state[$dir] = [
             'project' => basename($parent),
@@ -393,6 +399,7 @@ class CnKill extends Command
             'status' => 'calculating',
             'type' => $type,
             'lastModified' => $this->resolveLastModified($parent, $dir, $type),
+            'order' => $order,
         ];
 
         $this->enqueueSizeProcess($dir);
@@ -458,17 +465,9 @@ class CnKill extends Command
 
     protected function writeListLines(): void
     {
-        $count = count($this->dirs);
+        $visibleDirs = $this->syncCursorState($this->visibleDirs());
+        $count = count($visibleDirs);
         [$totalSize, $allSized, $deletedCount, $freedSize] = $this->computeStats();
-
-        // Clamp cursor / offset to current list length
-        if ($count > 0 && $this->cursor >= $count) {
-            $this->cursor = $count - 1;
-        }
-
-        if ($this->scrollOffset > max(0, $count - $this->visibleRows)) {
-            $this->scrollOffset = max(0, $count - $this->visibleRows);
-        }
 
         $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
 
@@ -482,7 +481,7 @@ class CnKill extends Command
         $numWidth = mb_strlen((string) $count);
 
         for ($i = $this->scrollOffset; $i < $visibleEnd; $i++) {
-            $dir = $this->dirs[$i];
+            $dir = $visibleDirs[$i];
             $info = $this->state[$dir];
             $isActive = ($i === $this->cursor);
 

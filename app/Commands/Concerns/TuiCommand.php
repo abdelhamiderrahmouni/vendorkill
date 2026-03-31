@@ -7,6 +7,16 @@ namespace App\Commands\Concerns;
 trait TuiCommand
 {
     /**
+     * Active sort mode for the visible list.
+     */
+    protected string $sortMode = 'default';
+
+    /**
+     * Currently selected directory path in the visible list.
+     */
+    protected ?string $activeDir = null;
+
+    /**
      * Index of the currently highlighted row.
      */
     protected int $cursor = 0;
@@ -236,7 +246,8 @@ trait TuiCommand
             return;
         }
 
-        $count = count($this->dirs);
+        $visibleDirs = $this->syncCursorState($this->visibleDirs());
+        $count = count($visibleDirs);
 
         if ($byte === "\033") {
             $seq = fread(STDIN, 2);
@@ -248,6 +259,8 @@ trait TuiCommand
                     if ($this->cursor < $this->scrollOffset) {
                         $this->scrollOffset = $this->cursor;
                     }
+
+                    $this->activeDir = $visibleDirs[$this->cursor];
                 }
             } elseif ($seq === '[B') {
                 if ($this->cursor < $count - 1) {
@@ -256,6 +269,8 @@ trait TuiCommand
                     if ($this->cursor >= $this->scrollOffset + $this->visibleRows) {
                         $this->scrollOffset = $this->cursor - $this->visibleRows + 1;
                     }
+
+                    $this->activeDir = $visibleDirs[$this->cursor];
                 }
             } elseif ($seq === '[C') {
                 if ($count > 0) {
@@ -263,6 +278,7 @@ trait TuiCommand
                     $delta = $newOffset - $this->scrollOffset;
                     $this->scrollOffset = $newOffset;
                     $this->cursor = min($this->cursor + $delta, $count - 1);
+                    $this->activeDir = $visibleDirs[$this->cursor];
                 }
             } elseif ($seq === '[D') {
                 if ($count > 0) {
@@ -270,6 +286,7 @@ trait TuiCommand
                     $delta = $this->scrollOffset - $newOffset;
                     $this->scrollOffset = $newOffset;
                     $this->cursor = max($this->cursor - $delta, 0);
+                    $this->activeDir = $visibleDirs[$this->cursor];
                 }
             }
         } elseif ($byte === ' ') {
@@ -277,13 +294,17 @@ trait TuiCommand
                 return;
             }
 
-            $dir = $this->dirs[$this->cursor];
+            $dir = $visibleDirs[$this->cursor];
             $status = $this->state[$dir]['status'];
 
             if ($status === 'ready') {
                 $this->state[$dir]['status'] = 'deleting';
                 $this->startDeleteProcess($dir);
             }
+        } elseif ($byte === 's' || $byte === 'S') {
+            $this->activeDir = $count > 0 ? $visibleDirs[$this->cursor] : null;
+            $this->cycleSortMode();
+            $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
             $this->running = false;
         }
@@ -340,7 +361,7 @@ trait TuiCommand
 
     protected function printHelp(): void
     {
-        $this->line('  <fg=gray>↑↓ navigate   <fg=blue>←→ page</>  <fg=green>space</> delete   <fg=red>q</> quit</>');
+        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> sort  <fg=green>space</> delete  <fg=red>q</> quit</>');
         $this->newLine();
 
         $this->headerLines += 2;
@@ -350,6 +371,175 @@ trait TuiCommand
     {
         $this->renderedLines = 0;
         $this->writeListLines();
+    }
+
+    protected function initializeSortMode(): bool
+    {
+        $sort = strtolower((string) ($this->option('sort') ?? 'default'));
+
+        if (! in_array($sort, $this->availableSortModes(), true)) {
+            $this->error('--sort must be one of: ' . implode(', ', $this->availableSortModes()) . '.');
+
+            return false;
+        }
+
+        $this->sortMode = $sort;
+
+        return true;
+    }
+
+    /**
+     * @return string[]
+     */
+    protected function availableSortModes(): array
+    {
+        return ['default', 'name', 'size', 'modified'];
+    }
+
+    protected function cycleSortMode(): void
+    {
+        $modes = $this->availableSortModes();
+        $index = array_search($this->sortMode, $modes, true);
+
+        if ($index === false) {
+            $this->sortMode = $modes[0];
+
+            return;
+        }
+
+        $this->sortMode = $modes[($index + 1) % count($modes)];
+    }
+
+    /**
+     * @return string[]
+     */
+    protected function visibleDirs(): array
+    {
+        $dirs = $this->dirs;
+
+        usort($dirs, fn (string $left, string $right): int => $this->compareVisibleDirs($left, $right));
+
+        return $dirs;
+    }
+
+    /**
+     * @param  string[]  $visibleDirs
+     * @return string[]
+     */
+    protected function syncCursorState(array $visibleDirs): array
+    {
+        $count = count($visibleDirs);
+
+        if ($count === 0) {
+            $this->cursor = 0;
+            $this->scrollOffset = 0;
+            $this->activeDir = null;
+
+            return $visibleDirs;
+        }
+
+        if ($this->activeDir !== null) {
+            $index = array_search($this->activeDir, $visibleDirs, true);
+
+            if ($index !== false) {
+                $this->cursor = $index;
+            } else {
+                $this->activeDir = null;
+            }
+        }
+
+        if ($this->activeDir === null) {
+            if ($this->cursor >= $count) {
+                $this->cursor = $count - 1;
+            }
+
+            $this->cursor = max(0, $this->cursor);
+            $this->activeDir = $visibleDirs[$this->cursor];
+        }
+
+        $maxOffset = max(0, $count - $this->visibleRows);
+        if ($this->scrollOffset > $maxOffset) {
+            $this->scrollOffset = $maxOffset;
+        }
+
+        if ($this->cursor < $this->scrollOffset) {
+            $this->scrollOffset = $this->cursor;
+        }
+
+        if ($this->cursor >= $this->scrollOffset + $this->visibleRows) {
+            $this->scrollOffset = max(0, $this->cursor - $this->visibleRows + 1);
+        }
+
+        return $visibleDirs;
+    }
+
+    protected function compareVisibleDirs(string $left, string $right): int
+    {
+        $leftOrder = $this->sortOrderFor($left);
+        $rightOrder = $this->sortOrderFor($right);
+
+        return match ($this->sortMode) {
+            'name' => $this->compareByName($left, $right, $leftOrder, $rightOrder),
+            'size' => $this->compareByNullableDesc($this->sortSizeFor($left), $this->sortSizeFor($right), $leftOrder, $rightOrder),
+            'modified' => $this->compareByNullableDesc($this->sortModifiedFor($left), $this->sortModifiedFor($right), $leftOrder, $rightOrder),
+            default => $leftOrder <=> $rightOrder,
+        };
+    }
+
+    protected function compareByName(string $left, string $right, int $leftOrder, int $rightOrder): int
+    {
+        $cmp = strcasecmp($this->sortNameFor($left), $this->sortNameFor($right));
+
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+
+        return $leftOrder <=> $rightOrder;
+    }
+
+    protected function compareByNullableDesc(?int $left, ?int $right, int $leftOrder, int $rightOrder): int
+    {
+        if ($left === null && $right === null) {
+            return $leftOrder <=> $rightOrder;
+        }
+
+        if ($left === null) {
+            return 1;
+        }
+
+        if ($right === null) {
+            return -1;
+        }
+
+        $cmp = $right <=> $left;
+
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+
+        return $leftOrder <=> $rightOrder;
+    }
+
+    protected function sortNameFor(string $dir): string
+    {
+        $info = $this->state[$dir] ?? [];
+
+        return (string) ($info['project'] ?? $info['label'] ?? basename($dir));
+    }
+
+    protected function sortSizeFor(string $dir): ?int
+    {
+        return $this->state[$dir]['size'] ?? null;
+    }
+
+    protected function sortModifiedFor(string $dir): ?int
+    {
+        return $this->state[$dir]['lastModified'] ?? null;
+    }
+
+    protected function sortOrderFor(string $dir): int
+    {
+        return (int) ($this->state[$dir]['order'] ?? 0);
     }
 
     protected function eraseTui(): void

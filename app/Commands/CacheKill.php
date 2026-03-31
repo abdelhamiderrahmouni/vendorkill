@@ -16,7 +16,8 @@ class CacheKill extends Command
      *
      * @var string
      */
-    protected $signature = 'cache';
+    protected $signature = 'cache
+                            {--sort=default : Sort by default, name, size, or modified}';
 
     /**
      * The console command description.
@@ -35,7 +36,7 @@ class CacheKill extends Command
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
      *
-     * @var array<string, array{label: string, type: string, size: int|null, status: string}>
+     * @var array<string, array{label: string, type: string, size: int|null, status: string, lastModified: int|null, order: int}>
      */
     protected array $state = [];
 
@@ -76,6 +77,10 @@ class CacheKill extends Command
 
     public function handle(): int
     {
+        if (! $this->initializeSortMode()) {
+            return 1;
+        }
+
         $paths = $this->resolveCachePaths();
 
         if (empty($paths)) {
@@ -88,6 +93,8 @@ class CacheKill extends Command
         }
 
         // Populate state and enqueue size calculations before entering the TUI
+        $order = 0;
+
         foreach ($paths as $dir => $entry) {
             $this->dirs[] = $dir;
             $this->state[$dir] = [
@@ -95,6 +102,8 @@ class CacheKill extends Command
                 'type' => $entry['type'],
                 'size' => null,
                 'status' => 'calculating',
+                'lastModified' => filemtime($dir) ?: null,
+                'order' => $order++,
             ];
             $this->enqueueSizeProcess($dir);
         }
@@ -188,24 +197,16 @@ class CacheKill extends Command
 
     protected function writeListLines(): void
     {
-        $count = count($this->dirs);
+        $visibleDirs = $this->syncCursorState($this->visibleDirs());
+        $count = count($visibleDirs);
         [$totalSize, $allSized, $deletedCount, $freedSize] = $this->computeStats();
-
-        // Clamp cursor / offset to current list length
-        if ($count > 0 && $this->cursor >= $count) {
-            $this->cursor = $count - 1;
-        }
-
-        if ($this->scrollOffset > max(0, $count - $this->visibleRows)) {
-            $this->scrollOffset = max(0, $count - $this->visibleRows);
-        }
 
         $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
 
         $numWidth = mb_strlen((string) $count);
 
         for ($i = $this->scrollOffset; $i < $visibleEnd; $i++) {
-            $dir = $this->dirs[$i];
+            $dir = $visibleDirs[$i];
             $info = $this->state[$dir];
             $isActive = ($i === $this->cursor);
 
