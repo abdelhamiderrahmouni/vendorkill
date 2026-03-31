@@ -5,7 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3A"pint"+branch%3Amaster)
 [![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
 
-An interactive TUI tool (like `npkill`) to find and delete `vendor/` and `node_modules/` directories in your old projects — freeing up disk space fast.
+A Blazing Fast, Interactive TUI tool (like `npkill`) to find and delete `vendor/` and `node_modules/` directories in your old projects — freeing up disk space fast.
 
 ## Installation && Update
 
