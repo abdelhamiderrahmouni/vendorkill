@@ -32,10 +32,10 @@ class UpgradeCommand extends Command
     {
         $current = $this->app->version();
 
-        $this->line('');
+        $this->newLine();
         $this->line('  <options=bold>cnkill</> version check');
         $this->line("  Current version: <fg=cyan>{$current}</>");
-        $this->line('');
+        $this->newLine();
 
         // ── Fetch latest release ──────────────────────────────────────────────
         $this->output->write('  Fetching latest release… ');
@@ -44,15 +44,15 @@ class UpgradeCommand extends Command
 
         if ($latest === null) {
             $this->line('<fg=red>failed</>');
-            $this->line('');
+            $this->newLine();
             $this->line('  <fg=red>Could not reach GitHub. Check your internet connection and try again.</>');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
 
         $this->line("<fg=green>{$latest}</>");
-        $this->line('');
+        $this->newLine();
 
         // ── --check: report and exit ──────────────────────────────────────────
         if ($this->option('check')) {
@@ -63,7 +63,7 @@ class UpgradeCommand extends Command
                 $this->line('  <fg=green>You are on the latest version.</>');
             }
 
-            $this->line('');
+            $this->newLine();
 
             return self::SUCCESS;
         }
@@ -72,7 +72,7 @@ class UpgradeCommand extends Command
         if (! $checker->isNewer($latest, $current) && ! $this->option('force')) {
             $this->line("  <fg=green>Already on the latest version ({$latest}). Nothing to do.</>");
             $this->line('  Use <fg=cyan>--force</> to reinstall the current release.');
-            $this->line('');
+            $this->newLine();
 
             return self::SUCCESS;
         }
@@ -95,37 +95,30 @@ class UpgradeCommand extends Command
     private function upgradeComposer(string $latest): int
     {
         $this->line('  <options=bold>Install method:</> Composer global');
-        $this->line('');
+        $this->newLine();
 
-        // Locate the composer executable
         $composer = $this->findComposer();
 
         if ($composer === null) {
             $this->line('  <fg=red>composer not found in PATH.</>');
             $this->line('  Run manually: <fg=cyan>composer global update abdelhamiderrahmouni/cnkill</>');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
 
         $this->line("  Running: <fg=cyan>{$composer} global update abdelhamiderrahmouni/cnkill</>");
-        $this->line('');
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
+        $this->newLine();
 
         $proc = proc_open(
             [$composer, 'global', 'update', 'abdelhamiderrahmouni/cnkill'],
-            $descriptors,
+            [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
             $pipes
         );
 
         if (! is_resource($proc)) {
             $this->line('  <fg=red>Failed to start composer.</>');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
@@ -147,16 +140,14 @@ class UpgradeCommand extends Command
                 $this->output->write('  ' . $err);
             }
 
-            $status = proc_get_status($proc);
-
-            if (! $status['running']) {
+            if (! proc_get_status($proc)['running']) {
                 break;
             }
 
             usleep(20000);
         }
 
-        // Drain remaining output
+        // Drain any remaining buffered output
         while (($out = fgets($pipes[1])) !== false) {
             $this->output->write('  ' . $out);
         }
@@ -170,17 +161,17 @@ class UpgradeCommand extends Command
 
         $exitCode = proc_close($proc);
 
-        $this->line('');
+        $this->newLine();
 
         if ($exitCode !== 0) {
             $this->line("  <fg=red>Upgrade failed (composer exited with code {$exitCode}).</>");
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
 
         $this->line("  <fg=green;options=bold>Upgraded to {$latest} successfully.</>");
-        $this->line('');
+        $this->newLine();
 
         return self::SUCCESS;
     }
@@ -192,10 +183,10 @@ class UpgradeCommand extends Command
     private function findComposer(): ?string
     {
         foreach (['composer', 'composer.phar'] as $name) {
-            $which = trim((string) shell_exec("command -v {$name} 2>/dev/null"));
+            $path = trim((string) shell_exec("command -v {$name} 2>/dev/null"));
 
-            if ($which !== '') {
-                return $which;
+            if ($path !== '') {
+                return $path;
             }
         }
 
@@ -215,16 +206,16 @@ class UpgradeCommand extends Command
 
         $this->line('  <options=bold>Install method:</> standalone binary');
         $this->line("  Binary path:    <fg=gray>{$binaryPath}</>");
-        $this->line('');
+        $this->newLine();
 
         // ── Permission check ──────────────────────────────────────────────────
         if (! is_writable($binaryPath)) {
             $this->line("  <fg=red>Cannot write to:</> {$binaryPath}");
-            $this->line('');
+            $this->newLine();
             $this->line('  The binary is in a location you do not have write access to.');
             $this->line('  Re-run with elevated privileges, for example:');
             $this->line('  <fg=cyan>  sudo cnkill upgrade</>');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
@@ -233,41 +224,37 @@ class UpgradeCommand extends Command
         $downloadUrl = $checker->getDownloadUrl($latest);
 
         if ($downloadUrl === null) {
-            $os = PHP_OS_FAMILY;
-            $arch = php_uname('m');
-            $this->line("  <fg=red>Unsupported platform:</> {$os} / {$arch}");
+            $this->line('  <fg=red>Unsupported platform:</> ' . PHP_OS_FAMILY . ' / ' . php_uname('m'));
             $this->line('  Supported: Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64.');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
 
         $this->line("  Downloading: <fg=gray>{$downloadUrl}</>");
-        $this->line('');
+        $this->newLine();
 
         // ── Download to temp file ─────────────────────────────────────────────
         $tmpFile = tempnam(sys_get_temp_dir(), 'cnkill_');
 
         if ($tmpFile === false) {
             $this->line('  <fg=red>Failed to create a temporary file.</>');
-            $this->line('');
+            $this->newLine();
 
             return self::FAILURE;
         }
 
         register_shutdown_function(fn () => @unlink($tmpFile));
 
-        $curlAvailable = (trim((string) shell_exec('command -v curl 2>/dev/null')) !== '');
+        $curlAvailable = trim((string) shell_exec('command -v curl 2>/dev/null')) !== '';
 
-        if ($curlAvailable) {
-            $exitCode = $this->downloadWithCurl($downloadUrl, $tmpFile);
-        } else {
-            $exitCode = $this->downloadWithPhp($downloadUrl, $tmpFile);
-        }
+        $downloadExitCode = $curlAvailable
+            ? $this->downloadWithCurl($downloadUrl, $tmpFile)
+            : $this->downloadWithPhp($downloadUrl, $tmpFile);
 
-        if ($exitCode !== 0) {
+        if ($downloadExitCode !== 0) {
             $this->line('  <fg=red>Download failed. Check your internet connection and try again.</>');
-            $this->line('');
+            $this->newLine();
             @unlink($tmpFile);
 
             return self::FAILURE;
@@ -276,7 +263,7 @@ class UpgradeCommand extends Command
         // ── Validate download ─────────────────────────────────────────────────
         if (! file_exists($tmpFile) || filesize($tmpFile) < 1024) {
             $this->line('  <fg=red>Downloaded file appears incomplete or corrupt.</>');
-            $this->line('');
+            $this->newLine();
             @unlink($tmpFile);
 
             return self::FAILURE;
@@ -285,17 +272,17 @@ class UpgradeCommand extends Command
         // ── Atomic replace ────────────────────────────────────────────────────
         if (! @chmod($tmpFile, 0755)) {
             $this->line('  <fg=red>Failed to set executable permission on the downloaded binary.</>');
-            $this->line('');
+            $this->newLine();
             @unlink($tmpFile);
 
             return self::FAILURE;
         }
 
         if (! @rename($tmpFile, $binaryPath)) {
-            // rename() can fail across filesystems — fall back to copy+unlink
+            // rename() can fail across filesystems — fall back to copy + unlink
             if (! @copy($tmpFile, $binaryPath)) {
                 $this->line('  <fg=red>Failed to replace the binary at:</> ' . $binaryPath);
-                $this->line('');
+                $this->newLine();
                 @unlink($tmpFile);
 
                 return self::FAILURE;
@@ -306,20 +293,22 @@ class UpgradeCommand extends Command
         }
 
         $this->line("  <fg=green;options=bold>Upgraded successfully:</> {$current} → {$latest}");
-        $this->line('');
+        $this->newLine();
 
         return self::SUCCESS;
     }
 
     /**
      * Download a URL to a local file using the system `curl` binary.
-     * Returns the exit code (0 = success).
+     * Returns the process exit code (0 = success).
      */
     private function downloadWithCurl(string $url, string $destPath): int
     {
-        $cmd = ['curl', '--fail', '--silent', '--show-error', '--location', '-o', $destPath, $url];
-
-        $proc = proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $proc = proc_open(
+            ['curl', '--fail', '--silent', '--show-error', '--location', '-o', $destPath, $url],
+            [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
+            $pipes
+        );
 
         if (! is_resource($proc)) {
             return 1;
@@ -327,16 +316,15 @@ class UpgradeCommand extends Command
 
         fclose($pipes[0]);
 
-        $chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $frameCount = count($frames);
         $frame = 0;
 
         while (true) {
-            $this->output->write("\r  " . $chars[$frame % count($chars)] . ' Downloading…');
+            $this->output->write("\r  " . $frames[$frame % $frameCount] . ' Downloading…');
             $frame++;
 
-            $status = proc_get_status($proc);
-
-            if (! $status['running']) {
+            if (! proc_get_status($proc)['running']) {
                 break;
             }
 
