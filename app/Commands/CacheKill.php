@@ -114,7 +114,6 @@ class CacheKill extends Command
             $this->pollDeleteProcesses();
         });
 
-        $this->newLine();
         $this->showSummary();
         $this->thanks();
 

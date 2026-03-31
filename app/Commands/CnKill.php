@@ -160,10 +160,8 @@ class CnKill extends Command
 
         // If the list is empty after find completes, say so
         if (empty($this->dirs)) {
-            $this->newLine();
             $this->line('  <fg=green>No ' . $this->targetLabel() . ' directories found in this path.</>');
         } else {
-            $this->newLine();
             $this->showSummary();
         }
 

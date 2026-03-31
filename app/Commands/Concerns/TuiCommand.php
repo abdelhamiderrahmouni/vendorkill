@@ -796,7 +796,6 @@ trait TuiCommand
 
     protected function thanks(): void
     {
-        $this->newLine();
         $this->line('  <fg=blue>Thanks for using CNKill!</>');
 
         $freed = $this->freedSizeKb();
