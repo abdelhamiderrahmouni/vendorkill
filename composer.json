@@ -1,6 +1,6 @@
 {
     "name": "abdelhamiderrahmouni/cnkill",
-    "description": "a composer package to install globally and remove composer vendor folders and node_modules in your old projects to save storage.",
+    "description": "Remove composer vendor and node_modules directories in your projects to save disk space.",
     "keywords": ["composer", "npkill", "cnkill", "vendor", "node_modules", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner", "vendorkill"],
     "homepage": "https://github.com/abdelhamiderrahmouni/cnkill",
     "license": "MIT",
