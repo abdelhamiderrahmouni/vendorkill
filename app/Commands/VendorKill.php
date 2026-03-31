@@ -182,6 +182,7 @@ class VendorKill extends Command
         } finally {
             $this->disableRawMode();
             $this->cleanupProcesses();
+            $this->eraseTui();
         }
 
         // If the list is empty after find completes, say so
@@ -623,6 +624,22 @@ class VendorKill extends Command
     {
         $this->renderedLines = 0;
         $this->writeListLines();
+    }
+
+    /**
+     * Erase the entire TUI from the terminal — list block + the header lines printed before the loop.
+     * Called once on exit so the final summary prints on a clean screen.
+     */
+    protected function eraseTui(): void
+    {
+        // header = 1 newLine() + 1 help line + 1 newLine() = 3 lines printed before renderList()
+        $headerLines = 3;
+        $total = $headerLines + $this->renderedLines;
+
+        if ($total > 0) {
+            // Move cursor up to the first header line, then erase from cursor to end of screen
+            $this->output->write(sprintf("\033[%dA\033[J", $total));
+        }
     }
 
     protected function reRenderList(): void
