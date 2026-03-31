@@ -1,0 +1,104 @@
+name: Build and Publish Binaries
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build-phar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pcntl, posix
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Download Box
+        run: curl -fsSL "https://github.com/box-project/box/releases/latest/download/box.phar" -o box.phar
+
+      - name: Build PHAR
+        run: php box.phar compile
+
+      - name: Upload PHAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnkill-phar
+          path: builds/cnkill
+
+  package:
+    needs: build-phar
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-latest
+            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-linux-x86_64.tar.gz
+          - target: linux-aarch64
+            runner: ubuntu-24.04-arm
+            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-linux-aarch64.tar.gz
+          - target: macos-x86_64
+            runner: macos-13
+            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-macos-x86_64.tar.gz
+          - target: macos-aarch64
+            runner: macos-latest
+            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-macos-aarch64.tar.gz
+
+    steps:
+      - name: Download PHAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cnkill-phar
+          path: dist
+
+      - name: Download micro runtime
+        run: curl -fsSL "${{ matrix.micro_url }}" -o micro.tar.gz
+
+      - name: Extract micro.sfx
+        run: tar -xzf micro.tar.gz
+
+      - name: Build self-contained binary
+        run: |
+          mv dist/cnkill cnkill.phar
+          cat micro.sfx cnkill.phar > cnkill-${{ matrix.target }}
+          chmod +x cnkill-${{ matrix.target }}
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cnkill-${{ matrix.target }}
+
+  upload-phar:
+    needs: build-phar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download PHAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cnkill-phar
+          path: dist
+
+      - name: Prepare PHAR asset
+        run: mv dist/cnkill cnkill.phar
+
+      - name: Upload PHAR asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cnkill.phar

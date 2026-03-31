@@ -9,6 +9,18 @@ A Blazing Fast, Interactive TUI tool (like `npkill`) to find and delete `vendor/
 
 ## Installation && Update
 
+Quick install (Linux/macOS, no system PHP required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/main/install.sh | sh
+```
+
+System-wide install (requires sudo):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/main/install.sh | sh -s -- --system
+```
+
 Install globally via Composer:
 
 ```bash
@@ -65,7 +77,7 @@ cnkill cache --sort=modified  # sort caches by last modified
 - [x] Support for `node_modules/` directories (npm/yarn)
 - [x] Async size calculation and deletion
 - [ ] Add support for Windows
-- [ ] Add a build workflow to publish the phar automatically
+- [x] Add a build workflow to publish release binaries automatically
 - ... share your ideas in the [issues](https://github.com/abdelhamiderrahmouni/cnkill/issues)
 
 ## Changelog

@@ -1,4 +1,5 @@
 {
+    "shebang": false,
     "chmod": "0755",
     "directories": [
         "app",
