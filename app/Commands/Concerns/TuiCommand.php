@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Commands\Concerns;
 
+use function Termwind\render;
+
 trait TuiCommand
 {
     /**
@@ -796,7 +798,9 @@ trait TuiCommand
 
     protected function thanks(): void
     {
-        $this->line('  <fg=blue>Thanks for using CNKill!</>');
+        render('<div class="px-2 py-1">
+            <div class="bg-blue-800 text-white font-bold px-1">Thanks for using CNKill!</div>
+        </div>');
 
         $freed = $this->freedSizeKb();
 

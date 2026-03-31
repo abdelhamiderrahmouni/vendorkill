@@ -6,6 +6,7 @@ namespace App\Commands;
 
 use App\Commands\Concerns\TuiCommand;
 use LaravelZero\Framework\Commands\Command;
+use function Termwind\render;
 
 class CacheKill extends Command
 {
@@ -88,7 +89,10 @@ class CacheKill extends Command
             $this->newLine();
             $this->line('  <fg=green>No package manager caches found.</>');
             $this->newLine();
-            $this->line('  <fg=blue>Thanks for using CNKill!</>');
+
+            render('<div class="px-2 py-1">
+                <div class="bg-blue-800 text-white font-bold px-1">Thanks for using CNKill!</div>
+            </div>');
 
             return 0;
         }
