@@ -117,14 +117,39 @@ class CnKill extends Command
     protected int $renderedLines = 0;
 
     /**
+     * Number of lines printed by printHeader() + printHelp() (for eraseTui).
+     */
+    protected int $headerLines = 0;
+
+    /**
      * Original stty settings so we can restore them on exit.
      */
     protected string $sttyOriginal = '';
 
     /**
+     * Whether raw terminal mode is currently active (prevents double-restore).
+     */
+    protected bool $rawModeActive = false;
+
+    /**
      * Whether the main loop should keep running.
      */
     protected bool $running = true;
+
+    /**
+     * Whether terminal dimensions need to be re-queried (set on SIGWINCH).
+     */
+    protected bool $termDirty = true;
+
+    /**
+     * Cached value of --all option (set once in handle()).
+     */
+    protected bool $allMode = false;
+
+    /**
+     * Cached value of --node option (set once in handle()).
+     */
+    protected bool $nodeMode = false;
 
     /**
      * Spinner frame index.
@@ -138,6 +163,18 @@ class CnKill extends Command
     {
         $searchPath = $this->argument('path') ?? getcwd();
         $this->searchPath = rtrim((string) realpath($searchPath), DIRECTORY_SEPARATOR);
+
+        // Cache options once — avoids repeated option() calls in the hot render loop
+        $this->allMode = (bool) $this->option('all');
+        $this->nodeMode = (bool) $this->option('node');
+
+        // Validate --maxdepth early, before entering raw mode
+        $maxdepth = $this->option('maxdepth');
+        if ($maxdepth !== null && (! ctype_digit((string) $maxdepth) || (int) $maxdepth < 1)) {
+            $this->error('--maxdepth must be a positive integer.');
+
+            return 1;
+        }
 
         // Enter raw mode and show the UI immediately
         $this->enableRawMode();
@@ -162,6 +199,11 @@ class CnKill extends Command
 
                 // Read keyboard input (non-blocking)
                 $this->handleInput();
+
+                // Dispatch pending signals (e.g. SIGWINCH for terminal resize)
+                if (function_exists('pcntl_signal_dispatch')) {
+                    pcntl_signal_dispatch();
+                }
 
                 // Advance spinner
                 $this->spinnerFrame = ($this->spinnerFrame + 1) % count($this->spinnerFrames);
@@ -209,8 +251,8 @@ class CnKill extends Command
     protected function startFindProcess(string $searchPath): void
     {
         $maxdepth = $this->option('maxdepth');
-        $nodeMode = $this->option('node');
-        $allMode = $this->option('all');
+        $nodeMode = $this->nodeMode;
+        $allMode = $this->allMode;
 
         $args = ['find', $searchPath];
 
@@ -410,7 +452,7 @@ class CnKill extends Command
             2 => ['pipe', 'w'],
         ];
 
-        $proc = proc_open(['du', '-s', $dir], $descriptors, $pipes);
+        $proc = proc_open(['du', '-sk', $dir], $descriptors, $pipes);
 
         if (! is_resource($proc)) {
             $this->state[$dir]['size'] = 0;
@@ -540,7 +582,7 @@ class CnKill extends Command
 
     protected function handleInput(): void
     {
-        $byte = @fread(STDIN, 1);
+        $byte = fread(STDIN, 1);
 
         if ($byte === false || $byte === '') {
             return;
@@ -549,7 +591,7 @@ class CnKill extends Command
         $count = count($this->dirs);
 
         if ($byte === "\033") {
-            $seq = @fread(STDIN, 2);
+            $seq = fread(STDIN, 2);
 
             if ($seq === '[A') {
                 // Up arrow
@@ -594,9 +636,14 @@ class CnKill extends Command
     /**
      * Calculate how many list rows fit in the terminal, leaving room for the
      * help line, blank line, optional scroll indicator, and status bar.
+     * Only re-queries terminal dimensions when $termDirty is true (SIGWINCH received or first run).
      */
     protected function updateVisibleRows(): void
     {
+        if (! $this->termDirty) {
+            return;
+        }
+
         $termHeight = (int) (shell_exec('tput lines 2>/dev/null') ?? 24);
         $this->termWidth = (int) (shell_exec('tput cols 2>/dev/null') ?? 80);
 
@@ -612,6 +659,8 @@ class CnKill extends Command
         // Each item occupies 3 terminal lines (name + path + blank), so divide available lines by 3.
         $reserved = 5;
         $this->visibleRows = max(1, intdiv($termHeight - $reserved, 3));
+
+        $this->termDirty = false;
     }
 
     protected function printHeader(): void
@@ -626,17 +675,23 @@ class CnKill extends Command
         ];
 
         $this->newLine();
+        $this->headerLines++;
         foreach ($art as $line) {
             $this->line('<fg=blue>' . $line . '</>');
+            $this->headerLines++;
         }
         $this->line('  <fg=gray>Remove composer vendor and node_modules directories in your projects to save disk space.</>');
+        $this->headerLines++;
         $this->newLine();
+        $this->headerLines++;
     }
 
     protected function printHelp(): void
     {
         $this->line('  <fg=gray>↑↓ navigate   <fg=green>space</> delete   <fg=red>q</> quit</>');
+        $this->headerLines++;
         $this->newLine();
+        $this->headerLines++;
     }
 
     protected function renderList(): void
@@ -651,9 +706,7 @@ class CnKill extends Command
      */
     protected function eraseTui(): void
     {
-        // header = 1 newLine + 6 art lines + 1 description + 1 newLine + 1 help + 1 newLine = 11
-        $headerLines = 11;
-        $total = $headerLines + $this->renderedLines;
+        $total = $this->headerLines + $this->renderedLines;
 
         if ($total > 0) {
             // Move cursor up to the first header line, then erase from cursor to end of screen
@@ -759,7 +812,7 @@ class CnKill extends Command
             // In --all mode prepend a type tag to the badge so the user can distinguish dirs
             $typeTag = '';
             $typeTagText = '';
-            if ($this->option('all')) {
+            if ($this->allMode) {
                 if ($info['type'] === 'node') {
                     $typeTagText = '[node] ';
                     $typeTag = '<fg=blue>' . $typeTagText . '</>';
@@ -883,11 +936,11 @@ class CnKill extends Command
      */
     protected function targetLabel(): string
     {
-        if ($this->option('all')) {
+        if ($this->allMode) {
             return 'vendor/node_modules';
         }
 
-        if ($this->option('node')) {
+        if ($this->nodeMode) {
             return 'node_modules';
         }
 
@@ -897,9 +950,12 @@ class CnKill extends Command
     protected function formatSize(int|float $size): string
     {
         $units = ['KB', 'MB', 'GB', 'TB'];
+        $unitCount = count($units);
+        $i = 0;
 
-        for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
+        while ($size >= 1024 && $i < $unitCount - 1) {
             $size /= 1024;
+            $i++;
         }
 
         return round($size, 2) . ' ' . $units[$i];
@@ -909,6 +965,7 @@ class CnKill extends Command
     {
         $this->sttyOriginal = trim((string) shell_exec('stty -g 2>/dev/null'));
         shell_exec('stty -echo -icanon min 0 time 0 2>/dev/null');
+        $this->rawModeActive = true;
 
         $this->output->write("\033[?25l"); // hide cursor
 
@@ -920,16 +977,26 @@ class CnKill extends Command
             pcntl_signal(SIGINT, function () {
                 $this->running = false;
             });
+
+            if (defined('SIGWINCH')) {
+                pcntl_signal(SIGWINCH, function () {
+                    $this->termDirty = true;
+                });
+            }
         }
     }
 
     protected function disableRawMode(): void
     {
+        if (! $this->rawModeActive) {
+            return;
+        }
+
+        $this->rawModeActive = false;
         $this->output->write("\033[?25h"); // show cursor
 
         if ($this->sttyOriginal !== '') {
             shell_exec('stty ' . escapeshellarg($this->sttyOriginal) . ' 2>/dev/null');
-            $this->sttyOriginal = '';
         }
     }
 
