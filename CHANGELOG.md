@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.3) (2026-03-31)
+
+### Documentation
+
+- update README to include toggle sort direction shortcut ([f87e3f5](https://github.com/abdelhamiderrahmouni/vendorkill/commit/f87e3f503ae84cc5994be746d40f08a6a3504d51))
 ## [0.4.2](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.2) (2026-03-31)
 
 ### Features
