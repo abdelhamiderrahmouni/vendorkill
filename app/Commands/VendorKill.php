@@ -14,8 +14,7 @@ class VendorKill extends Command
      * @var string
      */
     protected $signature = 'process {path? : The path to search for vendor directories}
-                                    {--maxdepth= : The maximum depth to search for vendor directories}
-                                    {--full : Show full details}';
+                                    {--maxdepth= : The maximum depth to search for vendor directories}';
 
     /**
      * The console command description.
@@ -541,8 +540,9 @@ class VendorKill extends Command
         }
 
         // Reserve: 1 help line + 1 blank + 1 status bar + 1 scroll indicator (worst case) + 1 padding
+        // Each item occupies 2 terminal lines (name + path), so divide available lines by 2.
         $reserved = 5;
-        $this->visibleRows = max(1, $termHeight - $reserved);
+        $this->visibleRows = max(1, intdiv($termHeight - $reserved, 2));
     }
 
     protected function printHelp(): void
@@ -642,10 +642,9 @@ class VendorKill extends Command
             $this->line(sprintf("\033[K %s%s %s", $indicator, $displayProject, $badge));
             $this->renderedLines++;
 
-            if ($this->option('full')) {
-                $this->line("\033[K     <fg=gray>$dir</>");
-                $this->renderedLines++;
-            }
+            $pathColor = $info['status'] === 'deleted' ? 'gray' : ($isActive ? 'cyan' : 'gray');
+            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $dir));
+            $this->renderedLines++;
         }
 
         // Scroll indicator
