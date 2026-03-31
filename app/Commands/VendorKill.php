@@ -105,6 +105,11 @@ class VendorKill extends Command
     protected int $visibleRows = 20;
 
     /**
+     * Terminal width in columns (updated each frame).
+     */
+    protected int $termWidth = 80;
+
+    /**
      * Number of lines currently rendered (for cursor rewind).
      */
     protected int $renderedLines = 0;
@@ -540,9 +545,14 @@ class VendorKill extends Command
     protected function updateVisibleRows(): void
     {
         $termHeight = (int) (shell_exec('tput lines 2>/dev/null') ?? 24);
+        $this->termWidth = (int) (shell_exec('tput cols 2>/dev/null') ?? 80);
 
         if ($termHeight < 5) {
             $termHeight = 24;
+        }
+
+        if ($this->termWidth < 40) {
+            $this->termWidth = 80;
         }
 
         // Reserve: 1 help line + 1 blank + 1 status bar + 1 scroll indicator (worst case) + 1 padding
@@ -621,36 +631,56 @@ class VendorKill extends Command
 
             switch ($info['status']) {
                 case 'calculating':
-                    $badge = '<fg=gray>calculating...</>';
+                    $badgeText = 'calculating...';
+                    $badge = "<fg=gray>{$badgeText}</>";
 
                     break;
                 case 'ready':
-                    $badge = '<fg=yellow>' . $this->formatSize($info['size']) . '</>';
+                    $badgeText = $this->formatSize($info['size']);
+                    $badge = "<fg=yellow>{$badgeText}</>";
 
                     break;
                 case 'deleting':
-                    $badge = '<fg=yellow;options=bold>deleting...</>';
+                    $badgeText = 'deleting...';
+                    $badge = "<fg=yellow;options=bold>{$badgeText}</>";
 
                     break;
                 case 'deleted':
-                    $badge = '<fg=green;options=bold>deleted ✓</>';
+                    $badgeText = 'deleted ✓';
+                    $badge = "<fg=green;options=bold>{$badgeText}</>";
 
                     break;
                 default:
+                    $badgeText = '';
                     $badge = '';
             }
 
-            $padded = str_pad($info['project'], 42);
-            $displayProject = $info['status'] === 'deleted'
-                ? "<fg=gray>{$padded}</>"
-                : ($isActive ? "<options=bold;fg=cyan>{$padded}</>" : "<options=bold>{$padded}</>");
+            // Right-align badge: " ▶ " = 3 chars, badge + 1 space padding on right
+            // Total line: 1 (leading space) + 2 (indicator) + project + gap + badge + 1 = termWidth
+            $prefixLen = 1 + 2; // leading space + indicator (▶ or spaces = 2 visible chars)
+            $badgePad = 1;      // 1 space before right edge
+            $projectWidth = max(10, $this->termWidth - $prefixLen - mb_strlen($badgeText) - $badgePad);
+            $projectPlain = mb_strlen($info['project']) > $projectWidth
+                ? mb_substr($info['project'], 0, $projectWidth - 1) . '…'
+                : str_pad($info['project'], $projectWidth);
 
-            $this->line(sprintf("\033[K %s%s %s", $indicator, $displayProject, $badge));
+            $displayProject = $info['status'] === 'deleted'
+                ? "<fg=gray>{$projectPlain}</>"
+                : ($isActive ? "<options=bold;fg=cyan>{$projectPlain}</>" : "<options=bold>{$projectPlain}</>");
+
+            $this->line(sprintf("\033[K %s%s%s", $indicator, $displayProject, $badge));
             $this->renderedLines++;
 
             $pathColor = $info['status'] === 'deleted' ? 'gray' : ($isActive ? 'cyan' : 'gray');
             $relativePath = ltrim(substr($dir, strlen($this->searchPath)), DIRECTORY_SEPARATOR);
-            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $relativePath ?: $dir));
+            $displayPath = $relativePath ?: $dir;
+            // Truncate long paths with ellipsis on the left (keep the end, which is more useful)
+            $pathIndent = 5; // "     " prefix
+            $maxPathWidth = $this->termWidth - $pathIndent;
+            if (mb_strlen($displayPath) > $maxPathWidth) {
+                $displayPath = '…' . mb_substr($displayPath, mb_strlen($displayPath) - $maxPathWidth + 1);
+            }
+            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $displayPath));
             $this->renderedLines++;
         }
 
