@@ -490,7 +490,8 @@ class CnKill extends Command
             $prefixLen = 1 + 2 + $numWidth + 1 + 1;
 
             if ($i > 0) {
-                $this->line($this->renderSeparator($prefixLen));
+                $separatorActive = $isActive || $i - 1 === $this->cursor;
+                $this->line($this->renderSeparator($prefixLen, $separatorActive));
                 $this->renderedLines++;
             }
 
@@ -615,11 +616,12 @@ class CnKill extends Command
         return 3;
     }
 
-    protected function renderSeparator(int $prefixLen): string
+    protected function renderSeparator(int $prefixLen, bool $isActive): string
     {
         $width = max(10, $this->termWidth - $prefixLen - 1);
+        $color = $isActive ? 'cyan' : 'gray';
 
-        return sprintf("\033[K%s<fg=gray>%s</>", str_repeat(' ', $prefixLen), str_repeat('-', $width));
+        return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, str_repeat('-', $width));
     }
 
     protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount, int $freedSize = 0): string
