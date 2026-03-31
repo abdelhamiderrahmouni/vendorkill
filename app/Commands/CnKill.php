@@ -677,6 +677,7 @@ class CnKill extends Command
         $totalSize = 0;
         $allSized = true;
         $deletedCount = 0;
+        $freedSize = 0;
 
         foreach ($this->state as $info) {
             if ($info['size'] !== null) {
@@ -689,6 +690,7 @@ class CnKill extends Command
 
             if ($info['status'] === 'deleted') {
                 $deletedCount++;
+                $freedSize += (int) $info['size'];
             }
         }
 
@@ -808,11 +810,11 @@ class CnKill extends Command
         }
 
         // Status bar
-        $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount));
+        $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize));
         $this->renderedLines++;
     }
 
-    protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount): string
+    protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount, int $freedSize = 0): string
     {
         $spinner = $this->spinnerFrames[$this->spinnerFrame];
 
@@ -832,8 +834,11 @@ class CnKill extends Command
             $totalStr = '  Total: <fg=green;options=bold>' . $this->formatSize($totalSize) . '</>';
         }
 
-        // Deleted summary
-        $deletedStr = $deletedCount > 0 ? "  <fg=green>{$deletedCount} deleted</>" : '';
+        // Deleted summary with freed space
+        $deletedStr = '';
+        if ($deletedCount > 0) {
+            $deletedStr = "  <fg=green>{$deletedCount} deleted</> <fg=green;options=bold>(" . $this->formatSize($freedSize) . ' freed)</>';
+        }
 
         $dirWord = $count === 1 ? 'directory' : 'directories';
         $label = $this->targetLabel();
@@ -932,5 +937,14 @@ class CnKill extends Command
     {
         $this->newLine();
         $this->line('<fg=blue>Thanks for using CNKill!</>');
+
+        $freed = (int) array_sum(array_column(
+            array_filter($this->state, fn ($i) => $i['status'] === 'deleted'),
+            'size'
+        ));
+
+        if ($freed > 0) {
+            $this->line('<fg=gray>Space released: ' . $this->formatSize($freed) . '</>');
+        }
     }
 }
