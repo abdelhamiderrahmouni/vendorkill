@@ -1,53 +1,65 @@
-# Vendor Kill
+# CNKill
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/abdelhamiderrahmouni/vendorkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/vendorkill)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/vendorkill/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/vendorkill/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/vendorkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/vendorkill/actions?query=workflow%3A"pint"+branch%3Amaster)
-[![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/vendorkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/vendorkill)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3A"pint"+branch%3Amaster)
+[![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
 
-a composer package to install globally and remove composer vendor folders in you old project to save storage.
+An interactive TUI tool (like `npkill`) to find and delete `vendor/` and `node_modules/` directories in your old projects — freeing up disk space fast.
 
 ## Installation && Update
 
-You can install the package globally via composer (and update it) by running the following command:
+Install globally via Composer:
 
 ```bash
-composer global require abdelhamiderrahmouni/vendorkill
+composer global require abdelhamiderrahmouni/cnkill
 ```
 
-you will find it installed in `~/.composer/vendor/bin` or `~/.config/composer/vendor/bin` directory.
-add it to your path to use it globally or create an alias like the following:
+You will find it installed in `~/.composer/vendor/bin` or `~/.config/composer/vendor/bin`.
+Add it to your PATH or create an alias:
 
 ```bash
-alias vendorkill="~/.composer/vendor/bin/vendorkill"
+alias cnkill="~/.composer/vendor/bin/cnkill"
 # or
-alias vendorkill="~/.config/composer/vendor/bin/vendorkill"
+alias cnkill="~/.config/composer/vendor/bin/cnkill"
 ```
-
 
 ## Usage
 
 ```bash
-vendorkill [path: defaults to current path] [options: --maxdepth=2 --full]
+cnkill [path: defaults to current path] [options]
 ```
 
 ```bash
 ## Examples
 
-vendorkill # remove vendor folders in current path
+cnkill                          # find vendor/ in current path
 
-vendorkill /path/to/project # remove vendor folders in /path/to/project
+cnkill /path/to/projects        # find vendor/ in a specific path
 
-vendorkill /path/to/project --maxdepth=4 # remove vendor folders in /path/to/project with maxdepth=4
+cnkill /path/to/projects --node # find node_modules/ only
 
-vendorkill /path/to/project --full # remove vendor folders in /path/to/project and all subdirectories
+cnkill /path/to/projects --all  # find both vendor/ and node_modules/
+
+cnkill /path/to/projects --maxdepth=4  # limit search depth
 ```
 
+## Controls
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate the list |
+| `Space` | Delete the highlighted directory |
+| `q` / `Ctrl-C` | Quit |
+
 ## Roadmap
-- [x] create the command
-- [ ] add support for windows
-- [ ] add a build workflow to build the phar file automatically
-- ... share your ideas in the [issues](https://github.com/abdelhamiderrahmouni/vendorkill/issues)
+- [x] Interactive TUI with real-time streaming results
+- [x] Support for `vendor/` directories (Composer)
+- [x] Support for `node_modules/` directories (npm/yarn)
+- [x] Async size calculation and deletion
+- [ ] Add support for Windows
+- [ ] Add a build workflow to publish the phar automatically
+- ... share your ideas in the [issues](https://github.com/abdelhamiderrahmouni/cnkill/issues)
 
 ## Changelog
 
@@ -59,7 +71,7 @@ Please see [CONTRIBUTING](/.github/CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
-Please open an [issue](https://github.com/abdelhamiderrahmouni/vendorkill/issues) to report any security vulnerabilities.
+Please open an [issue](https://github.com/abdelhamiderrahmouni/cnkill/issues) to report any security vulnerabilities.
 
 ## Credits
 

@@ -6,7 +6,7 @@ namespace App\Commands;
 
 use LaravelZero\Framework\Commands\Command;
 
-class VendorKill extends Command
+class CnKill extends Command
 {
     /**
      * The name and signature of the console command.
@@ -912,6 +912,6 @@ class VendorKill extends Command
     protected function thanks(): void
     {
         $this->newLine();
-        $this->line('<fg=blue>Thanks for using VendorKill!</>');
+        $this->line('<fg=blue>Thanks for using CNKill!</>');
     }
 }

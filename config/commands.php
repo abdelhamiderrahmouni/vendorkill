@@ -1,7 +1,8 @@
 <?php
 
 declare(strict_types=1);
-use App\Commands\VendorKill;
+
+use App\Commands\CnKill;
 use Illuminate\Console\Scheduling\ScheduleFinishCommand;
 use Illuminate\Console\Scheduling\ScheduleListCommand;
 use Illuminate\Console\Scheduling\ScheduleRunCommand;
@@ -24,7 +25,7 @@ return [
     |
     */
 
-    'default' => VendorKill::class,
+    'default' => CnKill::class,
 
     /*
     |--------------------------------------------------------------------------

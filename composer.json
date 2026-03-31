@@ -1,12 +1,12 @@
 {
-    "name": "abdelhamiderrahmouni/vendorkill",
-    "description": "a composer package to install globally and remove composer vendor folders in you old project to save storage.",
-    "keywords": ["composer", "npkill", "vendor", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner"],
-    "homepage": "https://github.com/abdelhamiderrahmouni/vendorkill",
+    "name": "abdelhamiderrahmouni/cnkill",
+    "description": "a composer package to install globally and remove composer vendor folders and node_modules in your old projects to save storage.",
+    "keywords": ["composer", "npkill", "cnkill", "vendor", "node_modules", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner", "vendorkill"],
+    "homepage": "https://github.com/abdelhamiderrahmouni/cnkill",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/abdelhamiderrahmouni/vendorkill/issues",
-        "source": "https://github.com/abdelhamiderrahmouni/vendorkill"
+        "issues": "https://github.com/abdelhamiderrahmouni/cnkill/issues",
+        "source": "https://github.com/abdelhamiderrahmouni/cnkill"
     },
     "authors": [
         {
@@ -51,5 +51,5 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "bin": ["builds/vendorkill"]
+    "bin": ["builds/cnkill"]
 }
