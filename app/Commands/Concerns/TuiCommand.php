@@ -12,6 +12,18 @@ trait TuiCommand
     protected string $sortMode = 'default';
 
     /**
+     * Sort direction per mode.
+     *
+     * @var array<string, string>
+     */
+    protected array $sortDirections = [
+        'default' => 'asc',
+        'name' => 'asc',
+        'size' => 'desc',
+        'modified' => 'desc',
+    ];
+
+    /**
      * Currently selected directory path in the visible list.
      */
     protected ?string $activeDir = null;
@@ -301,9 +313,15 @@ trait TuiCommand
                 $this->state[$dir]['status'] = 'deleting';
                 $this->startDeleteProcess($dir);
             }
-        } elseif ($byte === 's' || $byte === 'S') {
+        } elseif ($byte === 's') {
             $this->activeDir = $count > 0 ? $visibleDirs[$this->cursor] : null;
             $this->cycleSortMode();
+            $this->syncCursorState($this->visibleDirs());
+        } elseif ($byte === 'S') {
+            $this->setSortDirection('asc');
+            $this->syncCursorState($this->visibleDirs());
+        } elseif ($byte === "\x13") {
+            $this->setSortDirection('desc');
             $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
             $this->running = false;
@@ -361,7 +379,7 @@ trait TuiCommand
 
     protected function printHelp(): void
     {
-        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> sort  <fg=green>space</> delete  <fg=red>q</> quit</>');
+        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> field  <fg=yellow>S</> asc  <fg=yellow>Ctrl-S</> desc  <fg=green>space</> delete  <fg=red>q</> quit</>');
         $this->newLine();
 
         $this->headerLines += 2;
@@ -408,6 +426,15 @@ trait TuiCommand
         }
 
         $this->sortMode = $modes[($index + 1) % count($modes)];
+    }
+
+    protected function setSortDirection(string $direction): void
+    {
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            return;
+        }
+
+        $this->sortDirections[$this->sortMode] = $direction;
     }
 
     /**
@@ -477,18 +504,39 @@ trait TuiCommand
     {
         $leftOrder = $this->sortOrderFor($left);
         $rightOrder = $this->sortOrderFor($right);
+        $direction = $this->sortDirection();
 
         return match ($this->sortMode) {
-            'name' => $this->compareByName($left, $right, $leftOrder, $rightOrder),
-            'size' => $this->compareByNullableDesc($this->sortSizeFor($left), $this->sortSizeFor($right), $leftOrder, $rightOrder),
-            'modified' => $this->compareByNullableDesc($this->sortModifiedFor($left), $this->sortModifiedFor($right), $leftOrder, $rightOrder),
-            default => $leftOrder <=> $rightOrder,
+            'name' => $this->compareByName($left, $right, $leftOrder, $rightOrder, $direction),
+            'size' => $this->compareByNullable($this->sortSizeFor($left), $this->sortSizeFor($right), $leftOrder, $rightOrder, $direction),
+            'modified' => $this->compareByNullable($this->sortModifiedFor($left), $this->sortModifiedFor($right), $leftOrder, $rightOrder, $direction),
+            default => $direction === 'desc' ? $rightOrder <=> $leftOrder : $leftOrder <=> $rightOrder,
         };
     }
 
     protected function sortIndicator(): string
     {
-        return '<fg=yellow>Sort by:</> <fg=cyan>' . ucfirst($this->sortMode) . '</>';
+        return sprintf(
+            '<fg=yellow>Sort by:</> <fg=cyan>%s</> <fg=gray>[%s]</>',
+            $this->sortModeLabel(),
+            strtoupper($this->sortDirection())
+        );
+    }
+
+    protected function sortModeLabel(): string
+    {
+        return match ($this->sortMode) {
+            'default' => 'Default',
+            'name' => 'Name',
+            'size' => 'Size',
+            'modified' => 'Last modified',
+            default => ucfirst($this->sortMode),
+        };
+    }
+
+    protected function sortDirection(): string
+    {
+        return $this->sortDirections[$this->sortMode] ?? 'asc';
     }
 
     protected function renderSortLine(): string
@@ -496,9 +544,13 @@ trait TuiCommand
         return "\033[K  " . $this->sortIndicator();
     }
 
-    protected function compareByName(string $left, string $right, int $leftOrder, int $rightOrder): int
+    protected function compareByName(string $left, string $right, int $leftOrder, int $rightOrder, string $direction): int
     {
         $cmp = strcasecmp($this->sortNameFor($left), $this->sortNameFor($right));
+
+        if ($direction === 'desc') {
+            $cmp *= -1;
+        }
 
         if ($cmp !== 0) {
             return $cmp;
@@ -507,7 +559,7 @@ trait TuiCommand
         return $leftOrder <=> $rightOrder;
     }
 
-    protected function compareByNullableDesc(?int $left, ?int $right, int $leftOrder, int $rightOrder): int
+    protected function compareByNullable(?int $left, ?int $right, int $leftOrder, int $rightOrder, string $direction): int
     {
         if ($left === null && $right === null) {
             return $leftOrder <=> $rightOrder;
@@ -521,7 +573,9 @@ trait TuiCommand
             return -1;
         }
 
-        $cmp = $right <=> $left;
+        $cmp = $direction === 'desc'
+            ? $right <=> $left
+            : $left <=> $right;
 
         if ($cmp !== 0) {
             return $cmp;
@@ -694,7 +748,7 @@ trait TuiCommand
     protected function enableRawMode(): void
     {
         $this->sttyOriginal = trim((string) shell_exec('stty -g 2>/dev/null'));
-        shell_exec('stty -echo -icanon min 0 time 0 2>/dev/null');
+        shell_exec('stty -echo -icanon -ixon min 0 time 0 2>/dev/null');
         $this->rawModeActive = true;
 
         $this->output->write("\033[?25l");
