@@ -218,6 +218,7 @@ class VendorKill extends Command
             '(',
             '-type', 'd',
             '-name', 'vendor',
+            '-prune',
             '-print',
             ')',
         ]);
