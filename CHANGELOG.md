@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.5](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.5) (2026-03-31)
+
+### Bug Fixes
+
+- update default branch reference in changelog updater workflow ([b032b35](https://github.com/abdelhamiderrahmouni/vendorkill/commit/b032b35230fa4b1e2ba09b19503af0a294ba22d0))
+
+### Documentation
+
+- update README installation instructions and fix branch references ([360c5ca](https://github.com/abdelhamiderrahmouni/vendorkill/commit/360c5ca44aea2a5f75a3ba27137d59f748442447))
 ## [0.4.4](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.4) (2026-03-31)
 
 ### Features
