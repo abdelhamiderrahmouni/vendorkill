@@ -270,17 +270,21 @@ class CnKill extends Command
             ? (posix_getpwuid(posix_getuid())['dir'] ?? '')
             : '')), DIRECTORY_SEPARATOR);
 
+        $xdgCache = rtrim((string) ($_SERVER['XDG_CACHE_HOME'] ?? ''), DIRECTORY_SEPARATOR) ?: $home . '/.cache';
+
         $candidates = [
             // npm
             rtrim((string) shell_exec('npm config get cache 2>/dev/null'), "\n\r") ?: $home . '/.npm',
-            // pnpm
+            // pnpm content-addressable store
             rtrim((string) shell_exec('pnpm store path 2>/dev/null'), "\n\r") ?: $home . '/.local/share/pnpm/store',
+            // pnpm metadata + dlx cache (separate from the store)
+            $xdgCache . '/pnpm',
             // yarn
-            rtrim((string) shell_exec('yarn cache dir 2>/dev/null'), "\n\r") ?: $home . '/.cache/yarn',
+            rtrim((string) shell_exec('yarn cache dir 2>/dev/null'), "\n\r") ?: $xdgCache . '/yarn',
             // bun (no query command — path is always fixed)
             $home . '/.bun/install/cache',
             // composer
-            rtrim((string) shell_exec('composer config cache-dir 2>/dev/null'), "\n\r") ?: $home . '/.cache/composer',
+            rtrim((string) shell_exec('composer config cache-dir 2>/dev/null'), "\n\r") ?: $xdgCache . '/composer',
             // cpx (composer package executor — path is always fixed)
             $home . '/.cpx',
         ];
