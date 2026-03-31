@@ -609,9 +609,9 @@ class VendorKill extends Command
         }
 
         // Reserve: 1 help line + 1 blank + 1 status bar + 1 scroll indicator (worst case) + 1 padding
-        // Each item occupies 2 terminal lines (name + path), so divide available lines by 2.
+        // Each item occupies 3 terminal lines (name + path + blank), so divide available lines by 3.
         $reserved = 5;
-        $this->visibleRows = max(1, intdiv($termHeight - $reserved, 2));
+        $this->visibleRows = max(1, intdiv($termHeight - $reserved, 3));
     }
 
     protected function printHelp(): void
@@ -765,6 +765,9 @@ class VendorKill extends Command
                 $displayPath = '…' . mb_substr($displayPath, mb_strlen($displayPath) - $maxPathWidth + 1);
             }
             $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $displayPath));
+            $this->renderedLines++;
+
+            $this->line("\033[K");
             $this->renderedLines++;
         }
 
