@@ -797,12 +797,12 @@ trait TuiCommand
     protected function thanks(): void
     {
         $this->newLine();
-        $this->line('<fg=blue>Thanks for using CNKill!</>');
+        $this->line('  <fg=blue>Thanks for using CNKill!</>');
 
         $freed = $this->freedSizeKb();
 
         if ($freed > 0) {
-            $this->line('<fg=gray>Space released: ' . $this->formatSize($freed) . '</>');
+            $this->line('  <fg=gray>Space released: ' . $this->formatSize($freed) . '</>');
         }
     }
 

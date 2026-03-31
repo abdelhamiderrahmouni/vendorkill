@@ -86,9 +86,9 @@ class CacheKill extends Command
 
         if (empty($paths)) {
             $this->newLine();
-            $this->info('No package manager caches found.');
+            $this->line('  <fg=green>No package manager caches found.</>');
             $this->newLine();
-            $this->line('<fg=blue>Thanks for using CNKill!</>');
+            $this->line('  <fg=blue>Thanks for using CNKill!</>');
 
             return 0;
         }
