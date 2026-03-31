@@ -311,7 +311,7 @@ trait TuiCommand
         }
 
         $reserved = 5;
-        $this->visibleRows = max(1, intdiv($termHeight - $reserved, 3));
+        $this->visibleRows = max(1, intdiv($termHeight - $reserved, $this->listRowHeight()));
         $this->termDirty = false;
     }
 
@@ -453,37 +453,42 @@ trait TuiCommand
         }
 
         if ($seconds < 60) {
-            return $seconds . ' sec ago';
+            return $seconds . 's ago';
         }
 
         $minutes = intdiv($seconds, 60);
         if ($minutes < 60) {
-            return $minutes . ' min ago';
+            return $minutes . 'min ago';
         }
 
         $hours = intdiv($minutes, 60);
         if ($hours < 24) {
-            return $hours . ' hour' . ($hours === 1 ? '' : 's') . ' ago';
+            return $hours . 'h ago';
         }
 
         $days = intdiv($hours, 24);
         if ($days < 7) {
-            return $days . ' day' . ($days === 1 ? '' : 's') . ' ago';
+            return $days . 'd ago';
         }
 
         $weeks = intdiv($days, 7);
         if ($weeks < 5) {
-            return $weeks . ' week' . ($weeks === 1 ? '' : 's') . ' ago';
+            return $weeks . 'w ago';
         }
 
         $months = intdiv($days, 30);
         if ($months < 12) {
-            return $months . ' month' . ($months === 1 ? '' : 's') . ' ago';
+            return $months . 'mo ago';
         }
 
         $years = intdiv($days, 365);
 
-        return $years . ' year' . ($years === 1 ? '' : 's') . ' ago';
+        return $years . 'y ago';
+    }
+
+    protected function listRowHeight(): int
+    {
+        return 3;
     }
 
     protected function enableRawMode(): void

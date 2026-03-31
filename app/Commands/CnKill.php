@@ -494,16 +494,12 @@ class CnKill extends Command
             [$typeTag, $typeTagText] = $this->renderTypeTag($info['type']);
             [$badge, $badgeText] = $this->renderBadge($info['status'], $info['size']);
             $displayProject = $this->renderProject($info['project'], $info['status'], $isActive, $prefixLen, $typeTagText, $badgeText);
-            $displayPath = $this->renderPath($dir, $info['status'], $isActive, $prefixLen);
-            $displayLastModified = $this->renderLastModified($info['lastModified'], $info['status'], $isActive, $prefixLen);
+            $displayMeta = $this->renderMetaLine($dir, $info['lastModified'], $info['status'], $isActive, $prefixLen);
 
             $this->line(sprintf("\033[K %s%s %s%s%s", $indicator, $number, $displayProject, $typeTag, $badge));
             $this->renderedLines++;
 
-            $this->line($displayPath);
-            $this->renderedLines++;
-
-            $this->line($displayLastModified);
+            $this->line($displayMeta);
             $this->renderedLines++;
         }
 
@@ -587,36 +583,30 @@ class CnKill extends Command
     /**
      * Render the path line beneath the project name, truncated to fit the terminal width.
      */
-    protected function renderPath(string $dir, string $status, bool $isActive, int $prefixLen): string
+    protected function renderMetaLine(string $dir, ?int $lastModified, string $status, bool $isActive, int $prefixLen): string
     {
         $color = ($status === 'deleted' || ! $isActive) ? 'gray' : 'cyan';
 
         $relativePath = ltrim(substr($dir, strlen($this->searchPath)), DIRECTORY_SEPARATOR);
         $path = $relativePath ?: $dir;
-
+        $lastModifiedText = $this->formatRelativeTime($lastModified);
+        $gap = 2;
         $maxWidth = $this->termWidth - $prefixLen;
+        $rightWidth = mb_strlen($lastModifiedText);
+        $pathWidth = max(10, $maxWidth - $rightWidth - $gap);
 
-        if (mb_strlen($path) > $maxWidth) {
-            $path = '…' . mb_substr($path, mb_strlen($path) - $maxWidth + 1);
+        if (mb_strlen($path) > $pathWidth) {
+            $path = '…' . mb_substr($path, mb_strlen($path) - $pathWidth + 1);
         }
 
-        return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $path);
+        $line = str_pad($path, $pathWidth) . str_repeat(' ', $gap) . $lastModifiedText;
+
+        return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $line);
     }
 
-    /**
-     * Render the last-modified line beneath the project path.
-     */
-    protected function renderLastModified(?int $lastModified, string $status, bool $isActive, int $prefixLen): string
+    protected function listRowHeight(): int
     {
-        $color = ($status === 'deleted' || ! $isActive) ? 'gray' : 'cyan';
-        $text = 'last modified ' . $this->formatRelativeTime($lastModified);
-        $maxWidth = $this->termWidth - $prefixLen;
-
-        if (mb_strlen($text) > $maxWidth) {
-            $text = mb_substr($text, 0, max(1, $maxWidth - 1)) . '…';
-        }
-
-        return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $text);
+        return 2;
     }
 
     protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount, int $freedSize = 0): string
