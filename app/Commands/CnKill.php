@@ -489,6 +489,11 @@ class CnKill extends Command
             // prefixLen = 1 (leading space) + 2 (indicator) + numWidth + 1 (dot) + 1 (space)
             $prefixLen = 1 + 2 + $numWidth + 1 + 1;
 
+            if ($i > 0) {
+                $this->line($this->renderSeparator($prefixLen));
+                $this->renderedLines++;
+            }
+
             $indicator = $isActive ? '<fg=cyan>▶</> ' : '  ';
             $number = $this->renderNumber($i + 1, $numWidth, $info['status'], $isActive);
             [$typeTag, $typeTagText] = $this->renderTypeTag($info['type']);
@@ -607,7 +612,14 @@ class CnKill extends Command
 
     protected function listRowHeight(): int
     {
-        return 2;
+        return 3;
+    }
+
+    protected function renderSeparator(int $prefixLen): string
+    {
+        $width = max(10, $this->termWidth - $prefixLen - 1);
+
+        return sprintf("\033[K%s<fg=gray>%s</>", str_repeat(' ', $prefixLen), str_repeat('-', $width));
     }
 
     protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount, int $freedSize = 0): string
