@@ -38,6 +38,11 @@ class VendorKill extends Command
     protected array $state = [];
 
     /**
+     * The root path being scanned (used to make displayed paths relative).
+     */
+    protected string $searchPath = '';
+
+    /**
      * Ordered list of vendor directory paths (keys into $state).
      *
      * @var string[]
@@ -125,6 +130,7 @@ class VendorKill extends Command
     public function handle(): int
     {
         $searchPath = $this->argument('path') ?? getcwd();
+        $this->searchPath = rtrim((string) realpath($searchPath), DIRECTORY_SEPARATOR);
 
         // Enter raw mode and show the UI immediately
         $this->enableRawMode();
@@ -134,7 +140,7 @@ class VendorKill extends Command
         $this->renderList();
 
         // Start the find process in the background (non-blocking)
-        $this->startFindProcess($searchPath);
+        $this->startFindProcess($this->searchPath);
 
         try {
             while ($this->running) {
@@ -643,7 +649,8 @@ class VendorKill extends Command
             $this->renderedLines++;
 
             $pathColor = $info['status'] === 'deleted' ? 'gray' : ($isActive ? 'cyan' : 'gray');
-            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $dir));
+            $relativePath = ltrim(substr($dir, strlen($this->searchPath)), DIRECTORY_SEPARATOR);
+            $this->line(sprintf("\033[K     <fg=%s>%s</>", $pathColor, $relativePath ?: $dir));
             $this->renderedLines++;
         }
 
