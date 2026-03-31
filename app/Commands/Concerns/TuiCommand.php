@@ -331,7 +331,7 @@ trait TuiCommand
             $this->termWidth = 80;
         }
 
-        $reserved = 5;
+        $reserved = 6;
         $this->visibleRows = max(1, intdiv($termHeight - $reserved, $this->listRowHeight()));
         $this->termDirty = false;
     }
@@ -484,6 +484,16 @@ trait TuiCommand
             'modified' => $this->compareByNullableDesc($this->sortModifiedFor($left), $this->sortModifiedFor($right), $leftOrder, $rightOrder),
             default => $leftOrder <=> $rightOrder,
         };
+    }
+
+    protected function sortIndicator(): string
+    {
+        return '<fg=yellow>Sort by:</> <fg=cyan>' . ucfirst($this->sortMode) . '</>';
+    }
+
+    protected function renderSortLine(): string
+    {
+        return "\033[K  " . $this->sortIndicator();
     }
 
     protected function compareByName(string $left, string $right, int $leftOrder, int $rightOrder): int

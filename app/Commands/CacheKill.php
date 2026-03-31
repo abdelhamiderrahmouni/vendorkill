@@ -241,6 +241,9 @@ class CacheKill extends Command
             $this->renderedLines++;
         }
 
+        $this->line($this->renderSortLine());
+        $this->renderedLines++;
+
         // Status bar
         $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize));
         $this->renderedLines++;
