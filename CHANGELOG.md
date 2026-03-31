@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.6](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.6) (2026-03-31)
+
+### Bug Fixes
+
+- adjust output formatting for the thanks message and the search results ([a7b1b2f](https://github.com/abdelhamiderrahmouni/vendorkill/commit/a7b1b2fc6cfd05a84e13f8a93ea292ed34a1a6cc))
+- adjust output formatting for the thanks message and the search results ([d4c228a](https://github.com/abdelhamiderrahmouni/vendorkill/commit/d4c228a54a998071af9ddfd4a8d3d746d50079db))
+- update eraseTui method to optionally preserve header lines ([97ffdb8](https://github.com/abdelhamiderrahmouni/vendorkill/commit/97ffdb8e34be285313c2cb30cecafcc58bf17e1b))
 ## [0.4.5](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.5) (2026-03-31)
 
 ### Bug Fixes
