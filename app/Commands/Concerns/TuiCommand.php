@@ -436,6 +436,56 @@ trait TuiCommand
         return round($size, 2) . ' ' . $units[$i];
     }
 
+    protected function formatRelativeTime(?int $timestamp): string
+    {
+        if ($timestamp === null) {
+            return 'unknown';
+        }
+
+        $seconds = time() - $timestamp;
+
+        if ($seconds < 0) {
+            $seconds = 0;
+        }
+
+        if ($seconds < 10) {
+            return 'just now';
+        }
+
+        if ($seconds < 60) {
+            return $seconds . ' sec ago';
+        }
+
+        $minutes = intdiv($seconds, 60);
+        if ($minutes < 60) {
+            return $minutes . ' min ago';
+        }
+
+        $hours = intdiv($minutes, 60);
+        if ($hours < 24) {
+            return $hours . ' hour' . ($hours === 1 ? '' : 's') . ' ago';
+        }
+
+        $days = intdiv($hours, 24);
+        if ($days < 7) {
+            return $days . ' day' . ($days === 1 ? '' : 's') . ' ago';
+        }
+
+        $weeks = intdiv($days, 7);
+        if ($weeks < 5) {
+            return $weeks . ' week' . ($weeks === 1 ? '' : 's') . ' ago';
+        }
+
+        $months = intdiv($days, 30);
+        if ($months < 12) {
+            return $months . ' month' . ($months === 1 ? '' : 's') . ' ago';
+        }
+
+        $years = intdiv($days, 365);
+
+        return $years . ' year' . ($years === 1 ? '' : 's') . ' ago';
+    }
+
     protected function enableRawMode(): void
     {
         $this->sttyOriginal = trim((string) shell_exec('stty -g 2>/dev/null'));

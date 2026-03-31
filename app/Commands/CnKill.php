@@ -38,7 +38,7 @@ class CnKill extends Command
      *   'deleting'    — rm -rf in progress
      *   'deleted'     — rm -rf completed
      *
-     * @var array<string, array{project: string, size: int|null, status: string, type: string}>
+     * @var array<string, array{project: string, size: int|null, status: string, type: string, lastModified: int|null}>
      */
     protected array $state = [];
 
@@ -392,6 +392,7 @@ class CnKill extends Command
             'size' => null,
             'status' => 'calculating',
             'type' => $type,
+            'lastModified' => $this->resolveLastModified($parent, $dir, $type),
         ];
 
         $this->enqueueSizeProcess($dir);
@@ -411,6 +412,48 @@ class CnKill extends Command
         }
 
         $this->cleanupTuiProcesses();
+    }
+
+    /**
+     * Resolve the most useful last-modified timestamp we can show for a project.
+     */
+    protected function resolveLastModified(string $projectPath, string $dir, string $type): ?int
+    {
+        $candidates = [$projectPath, $dir];
+
+        if ($type === 'node') {
+            $candidates = array_merge($candidates, [
+                $projectPath . DIRECTORY_SEPARATOR . 'package.json',
+                $projectPath . DIRECTORY_SEPARATOR . 'package-lock.json',
+                $projectPath . DIRECTORY_SEPARATOR . 'pnpm-lock.yaml',
+                $projectPath . DIRECTORY_SEPARATOR . 'yarn.lock',
+                $projectPath . DIRECTORY_SEPARATOR . 'bun.lock',
+                $projectPath . DIRECTORY_SEPARATOR . 'bun.lockb',
+            ]);
+        } else {
+            $candidates = array_merge($candidates, [
+                $projectPath . DIRECTORY_SEPARATOR . 'composer.json',
+                $projectPath . DIRECTORY_SEPARATOR . 'composer.lock',
+            ]);
+        }
+
+        $lastModified = null;
+
+        foreach ($candidates as $candidate) {
+            if (! file_exists($candidate)) {
+                continue;
+            }
+
+            $mtime = filemtime($candidate);
+
+            if ($mtime === false) {
+                continue;
+            }
+
+            $lastModified = max($lastModified ?? $mtime, $mtime);
+        }
+
+        return $lastModified;
     }
 
     protected function writeListLines(): void
@@ -452,6 +495,7 @@ class CnKill extends Command
             [$badge, $badgeText] = $this->renderBadge($info['status'], $info['size']);
             $displayProject = $this->renderProject($info['project'], $info['status'], $isActive, $prefixLen, $typeTagText, $badgeText);
             $displayPath = $this->renderPath($dir, $info['status'], $isActive, $prefixLen);
+            $displayLastModified = $this->renderLastModified($info['lastModified'], $info['status'], $isActive, $prefixLen);
 
             $this->line(sprintf("\033[K %s%s %s%s%s", $indicator, $number, $displayProject, $typeTag, $badge));
             $this->renderedLines++;
@@ -459,7 +503,7 @@ class CnKill extends Command
             $this->line($displayPath);
             $this->renderedLines++;
 
-            $this->line("\033[K");
+            $this->line($displayLastModified);
             $this->renderedLines++;
         }
 
@@ -557,6 +601,22 @@ class CnKill extends Command
         }
 
         return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $path);
+    }
+
+    /**
+     * Render the last-modified line beneath the project path.
+     */
+    protected function renderLastModified(?int $lastModified, string $status, bool $isActive, int $prefixLen): string
+    {
+        $color = ($status === 'deleted' || ! $isActive) ? 'gray' : 'cyan';
+        $text = 'last modified ' . $this->formatRelativeTime($lastModified);
+        $maxWidth = $this->termWidth - $prefixLen;
+
+        if (mb_strlen($text) > $maxWidth) {
+            $text = mb_substr($text, 0, max(1, $maxWidth - 1)) . '…';
+        }
+
+        return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $text);
     }
 
     protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount, int $freedSize = 0): string
