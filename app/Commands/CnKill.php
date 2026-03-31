@@ -159,6 +159,14 @@ class CnKill extends Command
     /** @var string[] */
     protected array $spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+    /**
+     * Global package-manager cache directories to exclude from scanning.
+     * These are handled separately by the `cache` command.
+     *
+     * @var string[]
+     */
+    protected array $excludePaths = [];
+
     public function handle(): int
     {
         $searchPath = $this->argument('path') ?? getcwd();
@@ -175,6 +183,9 @@ class CnKill extends Command
 
             return 1;
         }
+
+        // Resolve package-manager cache dirs to exclude from scanning
+        $this->excludePaths = $this->resolveExcludePaths();
 
         // Enter raw mode and show the UI immediately
         $this->enableRawMode();
@@ -246,6 +257,41 @@ class CnKill extends Command
     // -------------------------------------------------------------------------
 
     /**
+     * Resolve the set of global package-manager cache directories that should
+     * be excluded from scanning. Each tool is queried for its actual configured
+     * path; if the query fails or the tool is not installed, a known default is
+     * used. Paths that do not exist on disk are omitted.
+     *
+     * @return string[]
+     */
+    protected function resolveExcludePaths(): array
+    {
+        $home = rtrim((string) ($_SERVER['HOME'] ?? (function_exists('posix_getuid')
+            ? (posix_getpwuid(posix_getuid())['dir'] ?? '')
+            : '')), DIRECTORY_SEPARATOR);
+
+        $candidates = [
+            // npm
+            rtrim((string) shell_exec('npm config get cache 2>/dev/null'), "\n\r") ?: $home . '/.npm',
+            // pnpm
+            rtrim((string) shell_exec('pnpm store path 2>/dev/null'), "\n\r") ?: $home . '/.local/share/pnpm/store',
+            // yarn
+            rtrim((string) shell_exec('yarn cache dir 2>/dev/null'), "\n\r") ?: $home . '/.cache/yarn',
+            // bun (no query command — path is always fixed)
+            $home . '/.bun/install/cache',
+            // composer
+            rtrim((string) shell_exec('composer config cache-dir 2>/dev/null'), "\n\r") ?: $home . '/.cache/composer',
+            // cpx (composer package executor — path is always fixed)
+            $home . '/.cpx',
+        ];
+
+        return array_values(array_filter(
+            $candidates,
+            fn (string $p) => $p !== '' && $p !== $home && is_dir($p)
+        ));
+    }
+
+    /**
      * Launch `find` as a non-blocking background process.
      */
     protected function startFindProcess(string $searchPath): void
@@ -257,6 +303,11 @@ class CnKill extends Command
         if ($maxdepth !== null) {
             $args[] = '-maxdepth';
             $args[] = $maxdepth;
+        }
+
+        // Prune known package-manager cache directories so find never descends into them.
+        foreach ($this->excludePaths as $excluded) {
+            $args = array_merge($args, ['-path', $excluded, '-prune', '-o']);
         }
 
         if ($this->allMode) {
@@ -397,6 +448,15 @@ class CnKill extends Command
     {
         if (isset($this->state[$dir])) {
             return;
+        }
+
+        // Safety-net: skip anything rooted inside a known cache directory.
+        // The find prune predicates handle most cases, but this catches edge
+        // cases such as the user passing a cache dir directly as $searchPath.
+        foreach ($this->excludePaths as $excluded) {
+            if ($dir === $excluded || str_starts_with($dir, $excluded . DIRECTORY_SEPARATOR)) {
+                return;
+            }
         }
 
         $parent = dirname($dir);
