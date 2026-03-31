@@ -1,6 +1,10 @@
 <?php
 
 declare(strict_types=1);
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Foundation\Exceptions\Handler;
+use LaravelZero\Framework\Application;
+use LaravelZero\Framework\Kernel;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,7 +17,7 @@ declare(strict_types=1);
 |
 */
 
-$app = new LaravelZero\Framework\Application(
+$app = new Application(
     dirname(__DIR__)
 );
 
@@ -30,12 +34,12 @@ $app = new LaravelZero\Framework\Application(
 
 $app->singleton(
     Illuminate\Contracts\Console\Kernel::class,
-    LaravelZero\Framework\Kernel::class
+    Kernel::class
 );
 
 $app->singleton(
-    Illuminate\Contracts\Debug\ExceptionHandler::class,
-    Illuminate\Foundation\Exceptions\Handler::class
+    ExceptionHandler::class,
+    Handler::class
 );
 
 /*

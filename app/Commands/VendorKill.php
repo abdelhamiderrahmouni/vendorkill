@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use LaravelZero\Framework\Commands\Command;
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Process;
 
 class VendorKill extends Command
 {
@@ -48,12 +46,36 @@ class VendorKill extends Command
     protected array $dirs = [];
 
     /**
+     * Background proc_open handle + pipe for the streaming `find` process.
+     *
+     * @var array{proc: resource, pipe: resource, buf: string}|null
+     */
+    protected ?array $findProc = null;
+
+    /**
+     * Whether the find process has finished.
+     */
+    protected bool $findDone = false;
+
+    /**
      * Background proc_open handles for size calculations.
      * Maps dir path => ['proc' => resource, 'pipe' => resource]
      *
      * @var array<string, array{proc: resource, pipe: resource}>
      */
     protected array $sizeProcs = [];
+
+    /**
+     * Dirs waiting for a free size-calculation slot.
+     *
+     * @var string[]
+     */
+    protected array $sizePending = [];
+
+    /**
+     * Max parallel du -s processes.
+     */
+    protected int $sizeConcurrency = 10;
 
     /**
      * Background proc_open handles for deletions.
@@ -74,7 +96,7 @@ class VendorKill extends Command
     protected int $scrollOffset = 0;
 
     /**
-     * Number of list rows visible at once (clamped to actual count).
+     * Number of list rows visible at once (updated each frame from terminal height).
      */
     protected int $visibleRows = 20;
 
@@ -93,47 +115,33 @@ class VendorKill extends Command
      */
     protected bool $running = true;
 
+    /**
+     * Spinner frame index.
+     */
+    protected int $spinnerFrame = 0;
+
+    /** @var string[] */
+    protected array $spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
     public function handle(): int
     {
         $searchPath = $this->argument('path') ?? getcwd();
 
-        // Phase 1: Find all vendor directories
-        $this->info("Searching for vendor directories in $searchPath...");
-        $vendorDirs = $this->findVendorDirs($searchPath);
-
-        if (empty($vendorDirs)) {
-            $this->newLine();
-            $this->info('No composer vendor directories found in this path.');
-            $this->thanks();
-
-            return 0;
-        }
-
-        // Build initial state
-        foreach ($vendorDirs as $dir) {
-            $this->dirs[] = $dir;
-            $this->state[$dir] = [
-                'project' => basename(dirname($dir)),
-                'size' => null,
-                'status' => 'calculating',
-            ];
-        }
-
-        // Clamp visible rows to actual count
-        $this->visibleRows = min($this->visibleRows, count($this->dirs));
-
-        // Phase 2: Launch background du -s processes for all dirs
-        $this->launchSizeProcesses($vendorDirs);
-
-        // Phase 3: Enter raw terminal mode and run the interactive loop
+        // Enter raw mode and show the UI immediately
         $this->enableRawMode();
 
         $this->newLine();
         $this->printHelp();
         $this->renderList();
 
+        // Start the find process in the background (non-blocking)
+        $this->startFindProcess($searchPath);
+
         try {
             while ($this->running) {
+                // Drain new lines from find's stdout pipe
+                $this->pollFindProcess();
+
                 // Poll size processes
                 $this->pollSizeProcesses();
 
@@ -143,51 +151,190 @@ class VendorKill extends Command
                 // Read keyboard input (non-blocking)
                 $this->handleInput();
 
+                // Advance spinner
+                $this->spinnerFrame = ($this->spinnerFrame + 1) % count($this->spinnerFrames);
+
+                // Recalculate visible rows from current terminal height
+                $this->updateVisibleRows();
+
                 // Re-render
                 $this->reRenderList();
 
-                usleep(30000); // ~33 fps
+                usleep(50000); // ~20 fps — comfortable for a TUI
             }
         } finally {
             $this->disableRawMode();
             $this->cleanupProcesses();
         }
 
-        $this->newLine();
-        $this->showSummary();
+        // If the list is empty after find completes, say so
+        if (empty($this->dirs)) {
+            $this->newLine();
+            $this->info('No composer vendor directories found in this path.');
+        } else {
+            $this->newLine();
+            $this->showSummary();
+        }
+
         $this->thanks();
 
         return 0;
     }
 
+    // -------------------------------------------------------------------------
+    // Find process
+    // -------------------------------------------------------------------------
+
     /**
-     * Launch one background `du -s` process per directory.
-     *
-     * @param  string[]  $dirs
+     * Launch `find` as a non-blocking background process.
      */
-    protected function launchSizeProcesses(array $dirs): void
+    protected function startFindProcess(string $searchPath): void
     {
-        $concurrency = 10;
-        $pending = $dirs;
+        $maxdepth = $this->option('maxdepth');
 
-        // Launch up to $concurrency processes immediately
-        $toStart = array_splice($pending, 0, $concurrency);
+        $args = ['find', $searchPath];
 
-        foreach ($toStart as $dir) {
-            $this->startSizeProcess($dir);
+        if ($maxdepth !== null) {
+            $args[] = '-maxdepth';
+            $args[] = $maxdepth;
         }
 
-        // Store the rest to launch as slots free up
-        // (we'll handle this in pollSizeProcesses via a queue)
-        $this->sizePending = $pending;
+        $args = array_merge($args, [
+            '(',
+            '-name', 'node_modules',
+            '-prune',
+            ')',
+            '-o',
+            '(',
+            '-type', 'd',
+            '-name', 'vendor',
+            '-print',
+            ')',
+        ]);
+
+        $descriptors = [
+            0 => ['pipe', 'r'],  // stdin  (unused)
+            1 => ['pipe', 'w'],  // stdout — lines of vendor paths
+            2 => ['pipe', 'w'],  // stderr (discard)
+        ];
+
+        $proc = proc_open($args, $descriptors, $pipes);
+
+        if (! is_resource($proc)) {
+            $this->findDone = true;
+
+            return;
+        }
+
+        stream_set_blocking($pipes[1], false);
+        fclose($pipes[0]);
+        fclose($pipes[2]);
+
+        $this->findProc = ['proc' => $proc, 'pipe' => $pipes[1], 'buf' => ''];
     }
 
     /**
-     * Pending dirs not yet started (overflow from concurrency limit).
-     *
-     * @var string[]
+     * Read whatever is available from find's stdout and register new dirs.
      */
-    protected array $sizePending = [];
+    protected function pollFindProcess(): void
+    {
+        if ($this->findDone || $this->findProc === null) {
+            return;
+        }
+
+        // Read available bytes (non-blocking)
+        $chunk = fread($this->findProc['pipe'], 8192);
+
+        if ($chunk !== false && $chunk !== '') {
+            $this->findProc['buf'] .= $chunk;
+        }
+
+        // Process complete lines
+        while (($pos = strpos($this->findProc['buf'], "\n")) !== false) {
+            $line = substr($this->findProc['buf'], 0, $pos);
+            $this->findProc['buf'] = substr($this->findProc['buf'], $pos + 1);
+
+            $dir = rtrim($line, "\r");
+
+            if ($dir === '') {
+                continue;
+            }
+
+            // Filter: only composer projects
+            if (! file_exists(dirname($dir) . DIRECTORY_SEPARATOR . 'composer.json')) {
+                continue;
+            }
+
+            // New dir discovered — add to state immediately
+            if (! isset($this->state[$dir])) {
+                $this->dirs[] = $dir;
+                $this->state[$dir] = [
+                    'project' => basename(dirname($dir)),
+                    'size' => null,
+                    'status' => 'calculating',
+                ];
+
+                // Kick off size calculation
+                $this->enqueueSizeProcess($dir);
+            }
+        }
+
+        // Check if find has exited
+        $status = proc_get_status($this->findProc['proc']);
+
+        if (! $status['running']) {
+            // Drain any remaining buffer
+            $remaining = stream_get_contents($this->findProc['pipe']);
+
+            if ($remaining !== false && $remaining !== '') {
+                $this->findProc['buf'] .= $remaining;
+
+                // Process leftover lines (no trailing newline on last entry)
+                foreach (explode("\n", $this->findProc['buf']) as $line) {
+                    $dir = rtrim($line, "\r");
+
+                    if ($dir === '') {
+                        continue;
+                    }
+
+                    if (! file_exists(dirname($dir) . DIRECTORY_SEPARATOR . 'composer.json')) {
+                        continue;
+                    }
+
+                    if (! isset($this->state[$dir])) {
+                        $this->dirs[] = $dir;
+                        $this->state[$dir] = [
+                            'project' => basename(dirname($dir)),
+                            'size' => null,
+                            'status' => 'calculating',
+                        ];
+                        $this->enqueueSizeProcess($dir);
+                    }
+                }
+            }
+
+            fclose($this->findProc['pipe']);
+            proc_close($this->findProc['proc']);
+            $this->findProc = null;
+            $this->findDone = true;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Size processes
+    // -------------------------------------------------------------------------
+
+    /**
+     * Enqueue a dir for size calculation, starting immediately if a slot is free.
+     */
+    protected function enqueueSizeProcess(string $dir): void
+    {
+        if (count($this->sizeProcs) < $this->sizeConcurrency) {
+            $this->startSizeProcess($dir);
+        } else {
+            $this->sizePending[] = $dir;
+        }
+    }
 
     /**
      * Start a background du -s process for one directory.
@@ -195,26 +342,20 @@ class VendorKill extends Command
     protected function startSizeProcess(string $dir): void
     {
         $descriptors = [
-            0 => ['pipe', 'r'],  // stdin (unused)
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w'],  // stderr (discard)
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
         ];
 
-        $proc = proc_open(
-            ['du', '-s', $dir],
-            $descriptors,
-            $pipes
-        );
+        $proc = proc_open(['du', '-s', $dir], $descriptors, $pipes);
 
         if (! is_resource($proc)) {
-            // Fallback: mark as 0 immediately
             $this->state[$dir]['size'] = 0;
             $this->state[$dir]['status'] = 'ready';
 
             return;
         }
 
-        // Make stdout non-blocking
         stream_set_blocking($pipes[1], false);
         fclose($pipes[0]);
         fclose($pipes[2]);
@@ -234,7 +375,6 @@ class VendorKill extends Command
                 continue;
             }
 
-            // Process finished — read its output
             $raw = stream_get_contents($entry['pipe']);
             $output = trim((string) $raw);
             $size = $output !== '' ? (int) explode("\t", $output)[0] : 0;
@@ -246,13 +386,17 @@ class VendorKill extends Command
             proc_close($entry['proc']);
             unset($this->sizeProcs[$dir]);
 
-            // Start a pending process if any
+            // Fill the freed slot
             if (! empty($this->sizePending)) {
                 $next = array_shift($this->sizePending);
                 $this->startSizeProcess($next);
             }
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Delete processes
+    // -------------------------------------------------------------------------
 
     /**
      * Launch a background rm -rf process for one directory.
@@ -265,11 +409,7 @@ class VendorKill extends Command
             2 => ['pipe', 'w'],
         ];
 
-        $proc = proc_open(
-            ['rm', '-rf', $dir],
-            $descriptors,
-            $pipes
-        );
+        $proc = proc_open(['rm', '-rf', $dir], $descriptors, $pipes);
 
         if (! is_resource($proc)) {
             $this->state[$dir]['status'] = 'deleted';
@@ -303,11 +443,19 @@ class VendorKill extends Command
         }
     }
 
-    /**
-     * Kill and close any still-running background processes on exit.
-     */
+    // -------------------------------------------------------------------------
+    // Cleanup
+    // -------------------------------------------------------------------------
+
     protected function cleanupProcesses(): void
     {
+        if ($this->findProc !== null) {
+            fclose($this->findProc['pipe']);
+            proc_terminate($this->findProc['proc']);
+            proc_close($this->findProc['proc']);
+            $this->findProc = null;
+        }
+
         foreach ($this->sizeProcs as $entry) {
             fclose($entry['pipe']);
             proc_terminate($entry['proc']);
@@ -323,61 +471,10 @@ class VendorKill extends Command
         $this->deleteProcs = [];
     }
 
-    /**
-     * Find vendor directories, skipping vendor/ and node_modules/ recursion.
-     *
-     * @return string[]
-     */
-    protected function findVendorDirs(string $searchPath): array
-    {
-        $maxdepth = $this->option('maxdepth');
+    // -------------------------------------------------------------------------
+    // Input
+    // -------------------------------------------------------------------------
 
-        $args = ['find', $searchPath];
-
-        if ($maxdepth !== null) {
-            $args[] = '-maxdepth';
-            $args[] = $maxdepth;
-        }
-
-        $args = array_merge($args, [
-            '(',
-            '-name', 'node_modules',
-            '-prune',
-            ')',
-            '-o',
-            '(',
-            '-type', 'd',
-            '-name', 'vendor',
-            '-print',
-            ')',
-        ]);
-
-        $process = new Process($args);
-        $process->setTimeout(120);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new ProcessFailedException($process);
-        }
-
-        $output = trim($process->getOutput());
-
-        if ($output === '') {
-            return [];
-        }
-
-        $vendorDirs = explode(PHP_EOL, $output);
-
-        return array_values(array_filter($vendorDirs, function (string $dir) {
-            $parentDir = dirname($dir);
-
-            return file_exists($parentDir . DIRECTORY_SEPARATOR . 'composer.json');
-        }));
-    }
-
-    /**
-     * Read a single keypress (non-blocking) and handle it.
-     */
     protected function handleInput(): void
     {
         $byte = @fread(STDIN, 1);
@@ -389,12 +486,13 @@ class VendorKill extends Command
         $count = count($this->dirs);
 
         if ($byte === "\033") {
-            // Escape sequence — read more bytes
             $seq = @fread(STDIN, 2);
+
             if ($seq === '[A') {
                 // Up arrow
                 if ($this->cursor > 0) {
                     $this->cursor--;
+
                     if ($this->cursor < $this->scrollOffset) {
                         $this->scrollOffset = $this->cursor;
                     }
@@ -403,13 +501,17 @@ class VendorKill extends Command
                 // Down arrow
                 if ($this->cursor < $count - 1) {
                     $this->cursor++;
+
                     if ($this->cursor >= $this->scrollOffset + $this->visibleRows) {
                         $this->scrollOffset = $this->cursor - $this->visibleRows + 1;
                     }
                 }
             }
         } elseif ($byte === ' ') {
-            // Space — delete item under cursor
+            if ($count === 0) {
+                return;
+            }
+
             $dir = $this->dirs[$this->cursor];
             $status = $this->state[$dir]['status'];
 
@@ -418,75 +520,99 @@ class VendorKill extends Command
                 $this->startDeleteProcess($dir);
             }
         } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
-            // q, Ctrl-C, or Ctrl-D — quit
             $this->running = false;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Rendering
+    // -------------------------------------------------------------------------
+
     /**
-     * Print one-line help above the list.
+     * Calculate how many list rows fit in the terminal, leaving room for the
+     * help line, blank line, optional scroll indicator, and status bar.
      */
+    protected function updateVisibleRows(): void
+    {
+        $termHeight = (int) (shell_exec('tput lines 2>/dev/null') ?? 24);
+
+        if ($termHeight < 5) {
+            $termHeight = 24;
+        }
+
+        // Reserve: 1 help line + 1 blank + 1 status bar + 1 scroll indicator (worst case) + 1 padding
+        $reserved = 5;
+        $this->visibleRows = max(1, $termHeight - $reserved);
+    }
+
     protected function printHelp(): void
     {
         $this->line('  <fg=gray>↑↓ navigate   <fg=green>space</> delete   <fg=red>q</> quit</>');
         $this->newLine();
     }
 
-    /**
-     * Render the list for the first time (no cursor rewind).
-     */
     protected function renderList(): void
     {
         $this->renderedLines = 0;
         $this->writeListLines();
     }
 
-    /**
-     * Re-render the list by rewinding the cursor and overwriting.
-     */
     protected function reRenderList(): void
     {
         if ($this->renderedLines > 0) {
             $this->output->write(sprintf("\033[%dA", $this->renderedLines));
         }
+
         $this->renderedLines = 0;
         $this->writeListLines();
     }
 
-    /**
-     * Write visible list rows plus the status bar to output.
-     */
     protected function writeListLines(): void
     {
         $count = count($this->dirs);
         $totalSize = 0;
-        $allResolved = true;
+        $allSized = true;
         $deletedCount = 0;
 
-        // Accumulate totals across all dirs (not just visible ones)
         foreach ($this->state as $info) {
             if ($info['size'] !== null) {
                 $totalSize += $info['size'];
             }
+
             if ($info['status'] === 'calculating') {
-                $allResolved = false;
+                $allSized = false;
             }
+
             if ($info['status'] === 'deleted') {
                 $deletedCount++;
             }
         }
 
+        // Clamp cursor / offset to current list length
+        if ($count > 0 && $this->cursor >= $count) {
+            $this->cursor = $count - 1;
+        }
+
+        if ($this->scrollOffset > max(0, $count - $this->visibleRows)) {
+            $this->scrollOffset = max(0, $count - $this->visibleRows);
+        }
+
         $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
+
+        // Empty state while searching
+        if ($count === 0) {
+            $spinner = $this->spinnerFrames[$this->spinnerFrame];
+            $this->line("\033[K  <fg=gray>{$spinner} Searching...</>");
+            $this->renderedLines++;
+        }
 
         for ($i = $this->scrollOffset; $i < $visibleEnd; $i++) {
             $dir = $this->dirs[$i];
             $info = $this->state[$dir];
             $isActive = ($i === $this->cursor);
 
-            // Cursor indicator
             $indicator = $isActive ? '<fg=cyan>▶</> ' : '  ';
 
-            // Size / status badge
             switch ($info['status']) {
                 case 'calculating':
                     $badge = '<fg=gray>calculating...</>';
@@ -508,18 +634,12 @@ class VendorKill extends Command
                     $badge = '';
             }
 
-            // Pad the plain project name to align badges, then wrap with tags
             $padded = str_pad($info['project'], 42);
             $displayProject = $info['status'] === 'deleted'
                 ? "<fg=gray>{$padded}</>"
                 : ($isActive ? "<options=bold;fg=cyan>{$padded}</>" : "<options=bold>{$padded}</>");
 
-            $this->line(sprintf(
-                "\033[K %s%s %s",
-                $indicator,
-                $displayProject,
-                $badge
-            ));
+            $this->line(sprintf("\033[K %s%s %s", $indicator, $displayProject, $badge));
             $this->renderedLines++;
 
             if ($this->option('full')) {
@@ -540,31 +660,53 @@ class VendorKill extends Command
         }
 
         // Status bar
-        $totalStr = $allResolved
-            ? '<fg=green;options=bold>' . $this->formatSize($totalSize) . '</>'
-            : '<fg=gray>' . $this->formatSize($totalSize) . ' (calculating...)</>';
-
-        $deletedStr = $deletedCount > 0
-            ? "  <fg=green>{$deletedCount} deleted</>"
-            : '';
-
-        $this->line(sprintf(
-            "\033[K  Found <fg=green;options=bold>%d</> vendor %s — Total: %s%s",
-            $count,
-            $count === 1 ? 'directory' : 'directories',
-            $totalStr,
-            $deletedStr
-        ));
+        $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount));
         $this->renderedLines++;
     }
 
-    /**
-     * Show a final summary after quitting.
-     */
+    protected function buildStatusBar(int $count, int $totalSize, bool $allSized, int $deletedCount): string
+    {
+        $spinner = $this->spinnerFrames[$this->spinnerFrame];
+
+        // Search status
+        if (! $this->findDone) {
+            $searchStatus = "<fg=cyan>{$spinner} searching</>";
+        } else {
+            $searchStatus = '<fg=gray>done</>';
+        }
+
+        // Total size
+        if ($count === 0) {
+            $totalStr = '';
+        } elseif (! $allSized) {
+            $totalStr = '  Total: <fg=gray>' . $this->formatSize($totalSize) . ' …</>';
+        } else {
+            $totalStr = '  Total: <fg=green;options=bold>' . $this->formatSize($totalSize) . '</>';
+        }
+
+        // Deleted summary
+        $deletedStr = $deletedCount > 0 ? "  <fg=green>{$deletedCount} deleted</>" : '';
+
+        $dirWord = $count === 1 ? 'directory' : 'directories';
+
+        return sprintf(
+            "\033[K  <fg=green;options=bold>%d</> %s  %s%s%s",
+            $count,
+            $dirWord,
+            $searchStatus,
+            $totalStr,
+            $deletedStr
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Summary
+    // -------------------------------------------------------------------------
+
     protected function showSummary(): void
     {
         $deleted = array_filter($this->state, fn ($i) => $i['status'] === 'deleted');
-        $freedKb = array_sum(array_column($deleted, 'size'));
+        $freedKb = (int) array_sum(array_column($deleted, 'size'));
 
         if (count($deleted) > 0) {
             $count = count($deleted);
@@ -576,9 +718,10 @@ class VendorKill extends Command
         }
     }
 
-    /**
-     * Format a size in KB to a human-readable string.
-     */
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     protected function formatSize(int|float $size): string
     {
         $units = ['KB', 'MB', 'GB', 'TB'];
@@ -590,23 +733,17 @@ class VendorKill extends Command
         return round($size, 2) . ' ' . $units[$i];
     }
 
-    /**
-     * Put the terminal into raw mode (no echo, no line buffering, non-blocking reads).
-     */
     protected function enableRawMode(): void
     {
         $this->sttyOriginal = trim((string) shell_exec('stty -g 2>/dev/null'));
         shell_exec('stty -echo -icanon min 0 time 0 2>/dev/null');
 
-        // Hide cursor
-        $this->output->write("\033[?25l");
+        $this->output->write("\033[?25l"); // hide cursor
 
-        // Restore terminal on fatal shutdown
         register_shutdown_function(function () {
             $this->disableRawMode();
         });
 
-        // Handle SIGINT gracefully (belt-and-suspenders; Ctrl-C also comes via \x03 in raw mode)
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGINT, function () {
                 $this->running = false;
@@ -614,17 +751,13 @@ class VendorKill extends Command
         }
     }
 
-    /**
-     * Restore the terminal to its original state.
-     */
     protected function disableRawMode(): void
     {
-        // Show cursor
-        $this->output->write("\033[?25h");
+        $this->output->write("\033[?25h"); // show cursor
 
         if ($this->sttyOriginal !== '') {
             shell_exec('stty ' . escapeshellarg($this->sttyOriginal) . ' 2>/dev/null');
-            $this->sttyOriginal = ''; // Prevent double-restore from shutdown handler
+            $this->sttyOriginal = '';
         }
     }
 

@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use LaravelZero\Framework\Components\Logo\FigletString;
 
 return [
 
@@ -40,7 +41,7 @@ return [
     |
     */
 
-    'font' => \LaravelZero\Framework\Components\Logo\FigletString::DEFAULT_FONT,
+    'font' => FigletString::DEFAULT_FONT,
 
     /*
     |--------------------------------------------------------------------------
