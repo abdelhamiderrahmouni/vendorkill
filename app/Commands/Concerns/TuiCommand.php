@@ -318,10 +318,7 @@ trait TuiCommand
             $this->cycleSortMode();
             $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'S') {
-            $this->setSortDirection('asc');
-            $this->syncCursorState($this->visibleDirs());
-        } elseif ($byte === "\x13") {
-            $this->setSortDirection('desc');
+            $this->toggleSortDirection();
             $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
             $this->running = false;
@@ -379,7 +376,7 @@ trait TuiCommand
 
     protected function printHelp(): void
     {
-        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> field  <fg=yellow>S</> asc  <fg=yellow>Ctrl-S</> desc  <fg=green>space</> delete  <fg=red>q</> quit</>');
+        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> field  <fg=yellow>S</> direction  <fg=green>space</> delete  <fg=red>q</> quit</>');
         $this->newLine();
 
         $this->headerLines += 2;
@@ -435,6 +432,11 @@ trait TuiCommand
         }
 
         $this->sortDirections[$this->sortMode] = $direction;
+    }
+
+    protected function toggleSortDirection(): void
+    {
+        $this->setSortDirection($this->sortDirection() === 'asc' ? 'desc' : 'asc');
     }
 
     /**
@@ -748,7 +750,7 @@ trait TuiCommand
     protected function enableRawMode(): void
     {
         $this->sttyOriginal = trim((string) shell_exec('stty -g 2>/dev/null'));
-        shell_exec('stty -echo -icanon -ixon min 0 time 0 2>/dev/null');
+        shell_exec('stty -echo -icanon min 0 time 0 2>/dev/null');
         $this->rawModeActive = true;
 
         $this->output->write("\033[?25l");
