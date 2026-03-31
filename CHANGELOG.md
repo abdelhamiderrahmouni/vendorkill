@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.2) (2026-03-31)
+
+### Features
+
+- add 'failed' status for delete operation ([5e7eb91](https://github.com/abdelhamiderrahmouni/vendorkill/commit/5e7eb9118a183957f3e7da121eb323bc93a17718))
+
+### Code Refactoring
+
+- removed unused logo.php config file. ([6d0fcac](https://github.com/abdelhamiderrahmouni/vendorkill/commit/6d0fcacc3e5f1cbb3ce58cd03d8a9d65aecedefb))
+
+### Documentation
+
+- update README to emphasize tool performance ([29b34a4](https://github.com/abdelhamiderrahmouni/vendorkill/commit/29b34a4914836ae505ce969486cb5f83477e1b64))
 ## [0.4.1](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.1) (2026-03-31)
 
 ### Chores
