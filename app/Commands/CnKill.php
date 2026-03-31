@@ -591,7 +591,8 @@ class CnKill extends Command
         $path = $relativePath ?: $dir;
         $lastModifiedText = $this->formatRelativeTime($lastModified);
         $gap = 2;
-        $maxWidth = $this->termWidth - $prefixLen;
+        $rightPad = 1;
+        $maxWidth = $this->termWidth - $prefixLen - $rightPad;
         $rightWidth = mb_strlen($lastModifiedText);
         $pathWidth = max(10, $maxWidth - $rightWidth - $gap);
 
@@ -599,7 +600,7 @@ class CnKill extends Command
             $path = '…' . mb_substr($path, mb_strlen($path) - $pathWidth + 1);
         }
 
-        $line = str_pad($path, $pathWidth) . str_repeat(' ', $gap) . $lastModifiedText;
+        $line = str_pad($path, $pathWidth) . str_repeat(' ', $gap) . $lastModifiedText . str_repeat(' ', $rightPad);
 
         return sprintf("\033[K%s<fg=%s>%s</>", str_repeat(' ', $prefixLen), $color, $line);
     }
