@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.8](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.8) (2026-03-31)
+
+### Bug Fixes
+
+- fixed action failed for not finding the version in release name, fallback to release tag  name. ([420eaae](https://github.com/abdelhamiderrahmouni/vendorkill/commit/420eaaee412ccfe6339caf7d4f7ad788749557a3))
 ## [0.4.7](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.7) (2026-03-31)
 
 ### Code Refactoring
