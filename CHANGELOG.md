@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.1) (2026-03-31)
+
+### Chores
+
+- build app ([194a5a2](https://github.com/abdelhamiderrahmouni/vendorkill/commit/194a5a2f6abb0ace185d8d81bd4baa0caab21dd2))
 ## [0.4.0](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.0) (2026-03-31)
 
 ### Features
