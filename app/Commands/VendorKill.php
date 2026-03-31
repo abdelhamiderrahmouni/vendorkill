@@ -182,7 +182,7 @@ class VendorKill extends Command
         // If the list is empty after find completes, say so
         if (empty($this->dirs)) {
             $this->newLine();
-            $this->info('No composer vendor directories found in this path.');
+            $this->info('No ' . $this->targetLabel() . ' directories found in this path.');
         } else {
             $this->newLine();
             $this->showSummary();
@@ -786,10 +786,12 @@ class VendorKill extends Command
         $deletedStr = $deletedCount > 0 ? "  <fg=green>{$deletedCount} deleted</>" : '';
 
         $dirWord = $count === 1 ? 'directory' : 'directories';
+        $label = $this->targetLabel();
 
         return sprintf(
-            "\033[K  <fg=green;options=bold>%d</> %s  %s%s%s",
+            "\033[K  <fg=green;options=bold>%d</> %s %s  %s%s%s",
             $count,
+            $label,
             $dirWord,
             $searchStatus,
             $totalStr,
@@ -808,8 +810,9 @@ class VendorKill extends Command
 
         if (count($deleted) > 0) {
             $count = count($deleted);
+            $label = $this->targetLabel();
             $this->components->twoColumnDetail(
-                "<fg=green;options=bold>Deleted {$count} vendor " . ($count === 1 ? 'directory' : 'directories') . '</>',
+                "<fg=green;options=bold>Deleted {$count} {$label} " . ($count === 1 ? 'directory' : 'directories') . '</>',
                 '<fg=green;options=bold>' . $this->formatSize($freedKb) . ' freed</>'
             );
             $this->newLine();
@@ -819,6 +822,22 @@ class VendorKill extends Command
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Human-readable label for the type of directories being targeted.
+     */
+    protected function targetLabel(): string
+    {
+        if ($this->option('all')) {
+            return 'vendor/node_modules';
+        }
+
+        if ($this->option('node')) {
+            return 'node_modules';
+        }
+
+        return 'vendor';
+    }
 
     protected function formatSize(int|float $size): string
     {
