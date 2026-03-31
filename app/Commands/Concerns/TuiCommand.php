@@ -314,11 +314,12 @@ trait TuiCommand
                 $this->startDeleteProcess($dir);
             }
         } elseif ($byte === 's') {
-            $this->activeDir = $count > 0 ? $visibleDirs[$this->cursor] : null;
             $this->cycleSortMode();
+            $this->resetSelectionToTop();
             $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'S') {
             $this->toggleSortDirection();
+            $this->resetSelectionToTop();
             $this->syncCursorState($this->visibleDirs());
         } elseif ($byte === 'q' || $byte === "\x03" || $byte === "\x04") {
             $this->running = false;
@@ -437,6 +438,13 @@ trait TuiCommand
     protected function toggleSortDirection(): void
     {
         $this->setSortDirection($this->sortDirection() === 'asc' ? 'desc' : 'asc');
+    }
+
+    protected function resetSelectionToTop(): void
+    {
+        $this->cursor = 0;
+        $this->scrollOffset = 0;
+        $this->activeDir = null;
     }
 
     /**
