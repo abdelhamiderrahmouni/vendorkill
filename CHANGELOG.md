@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.7](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.7) (2026-03-31)
+
+### Code Refactoring
+
+- used termwind for formatting the thanks message. ([1239f11](https://github.com/abdelhamiderrahmouni/vendorkill/commit/1239f11ceb6f9c642c99fbe9d7833c0621d3309b))
 ## [0.4.6](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.6) (2026-03-31)
 
 ### Bug Fixes
