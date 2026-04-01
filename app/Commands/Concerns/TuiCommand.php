@@ -846,7 +846,7 @@ trait TuiCommand
         $this->line($blue);
         $this->line("  ╔══════════════════════════════════════════════════════════════╗");
         $this->line("  ║                                                              ║");
-        $this->line("  ║                   {$white}Thanks for using CNKill!{$blue}                   ║");
+        $this->line("  ║                   {$white}Thanks for using cnKill!{$blue}                   ║");
         $this->line("  ║                                                              ║");
         $this->line("  ╠══════════════════════════════════════════════════════════════╣");
         $this->line("  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║");
