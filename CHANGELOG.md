@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.5) (2026-04-01)
+
+### Code Refactoring
+
+- enhance thank you message formatting in console output ([0fce9b9](https://github.com/abdelhamiderrahmouni/vendorkill/commit/0fce9b963f35f4b9b957fad6e8a606a11a98a9c3))
+
+### Chores
+
+- app build ([af9206d](https://github.com/abdelhamiderrahmouni/vendorkill/commit/af9206d47b471c9b5d4fb812750f0fae7ab3868f))
 ## [v0.5.4](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.4/compare/v0.5.4...v0.5.4) - 2026-04-01
 
 ### Changelog
