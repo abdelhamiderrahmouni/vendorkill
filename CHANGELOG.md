@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.6](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.6) (2026-04-01)
+
+### Bug Fixes
+
+- fix the version resolution system ([c278c53](https://github.com/abdelhamiderrahmouni/vendorkill/commit/c278c53f9aab215853a7e4b5494f97b0d95b4ab6))
+- correct casing in thank you message for consistency ([d6006b6](https://github.com/abdelhamiderrahmouni/vendorkill/commit/d6006b64838f9299468b4ab74067faec1bd710b5))
+
+### Chores
+
+- app build ([3e4ab14](https://github.com/abdelhamiderrahmouni/vendorkill/commit/3e4ab14f20cdfa925723e1c116e5c8a4326f9bc4))
+- app build ([4144607](https://github.com/abdelhamiderrahmouni/vendorkill/commit/414460790f7ea5f0a6e7634e9dbd1e42f76a9610))
 ## [0.5.5](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.5) (2026-04-01)
 
 ### Code Refactoring
