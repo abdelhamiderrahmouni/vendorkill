@@ -59,6 +59,8 @@ class UpgradeCommand extends Command
             if ($checker->isNewer($latest, $current)) {
                 $this->line("  <fg=yellow>A new version is available:</> <options=bold>{$latest}</>");
                 $this->line('  Run <fg=cyan>cnkill upgrade</> to install it.');
+            } elseif ($checker->isNewer($current, $latest)) {
+                $this->line("  <fg=yellow>You are running a pre-release version</> <options=bold>{$current}</>, ahead of the latest stable release <options=bold>{$latest}</>.");
             } else {
                 $this->line('  <fg=green>You are on the latest version.</>');
             }
