@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.3) (2026-04-01)
+
+### Features
+
+- enhance version fetching with curl fallback for better compatibility ([59e7305](https://github.com/abdelhamiderrahmouni/vendorkill/commit/59e73052cef1557c848d2f9548c52e18b8bfa2f0))
+
+### Chores
+
+- app build ([0934e85](https://github.com/abdelhamiderrahmouni/vendorkill/commit/0934e858748297f9bb3ca4253e3dc3bfff05d481))
 ## [0.5.2](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.2) (2026-04-01)
 
 ### Features
