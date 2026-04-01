@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.7) (2026-04-01)
+
+### Chores
+
+- update CHANGELOG.md ([05da623](https://github.com/abdelhamiderrahmouni/vendorkill/commit/05da623770687f9b191ecb48dfe233b0b1069fc4))
+
+### Styles
+
+- update ASCII art styling in README.md ([9a6ff78](https://github.com/abdelhamiderrahmouni/vendorkill/commit/9a6ff78144b235ee20c374572ea787dd3f169b04))
 ## [v0.5.6](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.5/compare/v0.5.5...v0.5.6) - 2026-04-01
 
 ### Changelog
