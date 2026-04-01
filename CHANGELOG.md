@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - update README with ASCII art logo ([7325697](https://github.com/abdelhamiderrahmouni/vendorkill/commit/7325697565ab03df56dc1781f405151a079ac3ee))
+
+### Chores
+
+- app build ([9442240](https://github.com/abdelhamiderrahmouni/vendorkill/commit/94422404a9e240bba3fdc09d3dddf8a00dc0eb7e))
 ## [0.5.1](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.1) (2026-04-01)
 
 ### Chores
