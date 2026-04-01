@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Commands\Concerns;
 
+use App\Services\VersionChecker;
 use function Termwind\render;
 
 trait TuiCommand
@@ -372,9 +373,49 @@ trait TuiCommand
         }
 
         $this->line('  <fg=gray>' . $this->headerDescription() . '</>');
+        $this->line($this->renderVersionLine());
         $this->newLine();
 
-        $this->headerLines += 1 + count($art) + 1 + 1;
+        $this->headerLines += 1 + count($art) + 1 + 1 + 1;
+    }
+
+    /**
+     * Render the version line shown below the description.
+     * Shows an upgrade indicator when a newer release is cached.
+     * Reads only from the on-disk cache — never blocks on a network call.
+     */
+    protected function renderVersionLine(): string
+    {
+        $version = (string) app()->version();
+        $upgradeTag = $this->getCachedUpgradeTag();
+
+        if ($upgradeTag !== null) {
+            return "  <fg=yellow>{$version} ↑ {$upgradeTag}</>";
+        }
+
+        return "  <fg=yellow>{$version}</>";
+    }
+
+    /**
+     * Return the cached latest release tag if it is newer than the current
+     * version, or null when no upgrade is available or the cache is empty.
+     * Never makes a network request.
+     */
+    protected function getCachedUpgradeTag(): ?string
+    {
+        try {
+            /** @var VersionChecker $checker */
+            $checker = app(VersionChecker::class);
+            $cached = $checker->getCachedLatest();
+
+            if ($cached === null) {
+                return null;
+            }
+
+            return $checker->isNewer($cached, (string) app()->version()) ? $cached : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     protected function printHelp(): void
