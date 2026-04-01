@@ -48,16 +48,16 @@ jobs:
         include:
           - target: linux-x86_64
             runner: ubuntu-latest
-            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-linux-x86_64.tar.gz
+            micro_url: https://dl.static-php.dev/static-php-cli/common/php-8.5.4-micro-linux-x86_64.tar.gz
           - target: linux-aarch64
             runner: ubuntu-24.04-arm
-            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-linux-aarch64.tar.gz
+            micro_url: https://dl.static-php.dev/static-php-cli/common/php-8.5.4-micro-linux-aarch64.tar.gz
           - target: macos-x86_64
             runner: macos-13
-            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-macos-x86_64.tar.gz
+            micro_url: https://dl.static-php.dev/static-php-cli/common/php-8.5.4-micro-macos-x86_64.tar.gz
           - target: macos-aarch64
             runner: macos-latest
-            micro_url: https://dl.static-php.dev/static-php-cli/minimal/php-8.5.4-micro-macos-aarch64.tar.gz
+            micro_url: https://dl.static-php.dev/static-php-cli/common/php-8.5.4-micro-macos-aarch64.tar.gz
 
     steps:
       - name: Download PHAR artifact
