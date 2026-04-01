@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.4](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.4) (2026-04-01)
+
+### Bug Fixes
+
+- update micro_url paths for PHP 8.5.4 to use common directory ([1567ab9](https://github.com/abdelhamiderrahmouni/vendorkill/commit/1567ab903008631ece44a25d514bb1ede2fd53e3))
 ## [v0.5.3](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.3/compare/v0.5.3...v0.5.3) - 2026-04-01
 
 ### Changelog
