@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.0) (2026-04-01)
+
+### Features
+
+- add version display with upgrade indicator in TuiCommand ([e8cd96b](https://github.com/abdelhamiderrahmouni/vendorkill/commit/e8cd96b222b9de25815e9269cc454fd37704476d))
+- add upgrade command and version checking functionality ([f27de7a](https://github.com/abdelhamiderrahmouni/vendorkill/commit/f27de7a0ad483b7d2f9fd07da694085fb488058a))
+
+### Code Refactoring
+
+- code simplifier ([7ea7049](https://github.com/abdelhamiderrahmouni/vendorkill/commit/7ea70499e387f9b6f81d089be6febcccd1164034))
 ## [0.4.9](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.4.9) (2026-03-31)
 
 ### Code Refactoring
