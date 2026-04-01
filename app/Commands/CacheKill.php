@@ -91,10 +91,20 @@ class CacheKill extends Command
             $this->line('  <fg=green>No package manager caches found.</>');
             $this->newLine();
 
-            render('<div class="px-2 py-1">
-                <div class="bg-blue-800 text-white font-bold px-1">Thanks for using CNKill!</div>
-            </div>');
+            $blue = "\033[1;34m";
+            $white = "\033[1;37m";
+            $reset = "\033[0m";
 
+            $this->line($blue);
+            $this->line("  ╔══════════════════════════════════════════════════════════════╗");
+            $this->line("  ║                                                              ║");
+            $this->line("  ║                   {$white}Thanks for using CNKill!{$blue}                   ║");
+            $this->line("  ║                                                              ║");
+            $this->line("  ╠══════════════════════════════════════════════════════════════╣");
+            $this->line("  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║");
+            $this->line("  ╚══════════════════════════════════════════════════════════════╝");
+            $this->line($reset);
+            $this->line("\033[0m");
             return 0;
         }
 
