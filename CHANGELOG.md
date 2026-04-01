@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.2) (2026-04-01)
+
+### Features
+
+- update README with ASCII art logo ([7325697](https://github.com/abdelhamiderrahmouni/vendorkill/commit/7325697565ab03df56dc1781f405151a079ac3ee))
 ## [0.5.1](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.1) (2026-04-01)
 
 ### Chores
