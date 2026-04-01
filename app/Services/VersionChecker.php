@@ -104,8 +104,77 @@ class VersionChecker
     /**
      * Fetch the latest release tag from GitHub, cache the result, and return it.
      * Returns null on any failure.
+     *
+     * Uses the system curl binary when available — required for standalone
+     * micro.sfx builds, which lack the openssl extension and cannot make HTTPS
+     * requests via PHP stream wrappers.  Falls back to file_get_contents for
+     * environments where curl is not on PATH (e.g. Composer-global installs
+     * running under a full PHP with openssl).
      */
     public function fetchLatest(): ?string
+    {
+        $raw = trim((string) shell_exec('command -v curl 2>/dev/null')) !== ''
+            ? $this->fetchViaSystemCurl()
+            : $this->fetchViaFileGetContents();
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $data = json_decode($raw, true);
+
+        if (! is_array($data) || empty($data['tag_name'])) {
+            return null;
+        }
+
+        $tag = (string) $data['tag_name'];
+
+        $this->writeCache($tag);
+
+        return $tag;
+    }
+
+    /**
+     * Perform the GitHub API request using the system curl binary.
+     * Returns the raw response body, or null on failure.
+     */
+    private function fetchViaSystemCurl(): ?string
+    {
+        $proc = proc_open(
+            [
+                'curl',
+                '--fail', '--silent', '--show-error', '--location',
+                '--max-time', (string) self::FETCH_TIMEOUT,
+                '-H', 'User-Agent: cnkill-updater',
+                '-H', 'Accept: application/vnd.github+json',
+                self::API_URL,
+            ],
+            [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
+            $pipes
+        );
+
+        if (! is_resource($proc)) {
+            return null;
+        }
+
+        fclose($pipes[0]);
+
+        $raw = stream_get_contents($pipes[1]);
+
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $exitCode = proc_close($proc);
+
+        return ($exitCode === 0 && $raw !== false && $raw !== '') ? $raw : null;
+    }
+
+    /**
+     * Perform the GitHub API request using PHP's file_get_contents stream wrapper.
+     * Requires allow_url_fopen = 1 and the openssl extension (HTTPS support).
+     * Returns the raw response body, or null on failure.
+     */
+    private function fetchViaFileGetContents(): ?string
     {
         $context = stream_context_create([
             'http' => [
@@ -121,21 +190,7 @@ class VersionChecker
 
         $raw = @file_get_contents(self::API_URL, false, $context);
 
-        if ($raw === false) {
-            return null;
-        }
-
-        $data = json_decode($raw, true);
-
-        if (! is_array($data) || empty($data['tag_name'])) {
-            return null;
-        }
-
-        $tag = (string) $data['tag_name'];
-
-        $this->writeCache($tag);
-
-        return $tag;
+        return ($raw !== false && $raw !== '') ? $raw : null;
     }
 
     /**
