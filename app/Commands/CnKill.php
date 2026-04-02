@@ -18,8 +18,8 @@ class CnKill extends Command
      */
     protected $signature = 'process {path? : The path to search for vendor directories}
                                      {--maxdepth= : The maximum depth to search for vendor directories}
-                                     {--node : Search for node_modules directories instead of vendor}
-                                     {--all : Search for both vendor and node_modules directories}
+                                     {--node : Search for node_modules directories only}
+                                     {--composer : Search for composer vendor directories only}
                                      {--sort=default : Sort by default, name, size, or modified}';
 
     /**
@@ -97,9 +97,9 @@ class CnKill extends Command
     protected array $deleteProcs = [];
 
     /**
-     * Cached value of --all option (set once in handle()).
+     * Cached value of --composer option (set once in handle()).
      */
-    protected bool $allMode = false;
+    protected bool $composerMode = false;
 
     /**
      * Cached value of --node option (set once in handle()).
@@ -128,7 +128,7 @@ class CnKill extends Command
         $this->searchPath = $this->normalizePath($resolvedSearchPath);
 
         // Cache options once — avoids repeated option() calls in the hot render loop
-        $this->allMode = (bool) $this->option('all');
+        $this->composerMode = (bool) $this->option('composer');
         $this->nodeMode = (bool) $this->option('node');
 
         // Validate --maxdepth early, before entering raw mode
@@ -232,21 +232,7 @@ class CnKill extends Command
             $args = array_merge($args, ['-path', $excluded, '-prune', '-o']);
         }
 
-        if ($this->allMode) {
-            // Prune+print both vendor and node_modules
-            $args = array_merge($args, [
-                '(',
-                '-type', 'd',
-                '(',
-                '-name', 'vendor',
-                '-o',
-                '-name', 'node_modules',
-                ')',
-                '-prune',
-                '-print',
-                ')',
-            ]);
-        } elseif ($this->nodeMode) {
+        if ($this->nodeMode) {
             // Prune vendor (don't print), prune+print node_modules
             $args = array_merge($args, [
                 '(',
@@ -261,8 +247,8 @@ class CnKill extends Command
                 '-print',
                 ')',
             ]);
-        } else {
-            // Default: prune node_modules (don't print), prune+print vendor
+        } elseif ($this->composerMode) {
+            // Prune node_modules (don't print), prune+print vendor
             $args = array_merge($args, [
                 '(',
                 '-name', 'node_modules',
@@ -272,6 +258,20 @@ class CnKill extends Command
                 '(',
                 '-type', 'd',
                 '-name', 'vendor',
+                '-prune',
+                '-print',
+                ')',
+            ]);
+        } else {
+            // Default: prune+print both vendor and node_modules
+            $args = array_merge($args, [
+                '(',
+                '-type', 'd',
+                '(',
+                '-name', 'vendor',
+                '-o',
+                '-name', 'node_modules',
+                ')',
                 '-prune',
                 '-print',
                 ')',
@@ -547,14 +547,14 @@ class CnKill extends Command
     }
 
     /**
-     * Render the type tag for --all mode (e.g. "[node] " or "[vendor] ").
+     * Render the type tag for default (both) mode (e.g. "[node] " or "[vendor] ").
      * Returns [markup, plainText] — plainText is used for width calculations.
      *
      * @return array{string, string}
      */
     protected function renderTypeTag(string $type): array
     {
-        if (! $this->allMode) {
+        if ($this->nodeMode || $this->composerMode) {
             return ['', ''];
         }
 
@@ -712,14 +712,14 @@ class CnKill extends Command
      */
     protected function targetLabel(): string
     {
-        if ($this->allMode) {
-            return 'vendor/node_modules';
-        }
-
         if ($this->nodeMode) {
             return 'node_modules';
         }
 
-        return 'vendor';
+        if ($this->composerMode) {
+            return 'vendor';
+        }
+
+        return 'vendor/node_modules';
     }
 }
