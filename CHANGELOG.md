@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.8](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.8) (2026-04-02)
+
+### Code Refactoring
+
+- changed repository ownership references from abdelhamiderrahmouni to barnphp ([13bf1bc](https://github.com/abdelhamiderrahmouni/vendorkill/commit/13bf1bc0dd5717cf241bb3bb73b12d61bb6256cf))
+
+### Chores
+
+- build app ([179e959](https://github.com/abdelhamiderrahmouni/vendorkill/commit/179e959e3d824061a7a358c890b8c79710633746))
 ## [0.5.7](https://github.com/barnphp/cnkill/releases/tag/v0.5.7) (2026-04-01)
 
 ### Chores
