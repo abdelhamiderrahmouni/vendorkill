@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.9](https://github.com/barnphp/cnkill/releases/tag/v0.5.9) (2026-04-02)
+
+### Bug Fixes
+
+- update command options for vendor and node_modules search ([9db7c66](https://github.com/barnphp/cnkill/commit/9db7c66c276b43c7df05f4f7626322aee53eb4d8))
+- update help text for sorting command in TuiCommand ([4e25113](https://github.com/barnphp/cnkill/commit/4e251135d02a9cf1f4512a0d895cbbaf2ba44513))
 ## [0.5.8](https://github.com/abdelhamiderrahmouni/vendorkill/releases/tag/v0.5.8) (2026-04-02)
 
 ### Code Refactoring
