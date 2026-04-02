@@ -1,5 +1,5 @@
 
-<pre style="font-family: monospace;">
+<pre style="font-family: monospace; letter-spacing: -1px; line-height: 1.1">
 <span style="color:#ffb300;">   █████████  </span><span style="color:#3388ff;">██████   █████ </span>█████   ████ █████ █████       █████
 <span style="color:#ffb300;">  ███░░░░░██  </span><span style="color:#3388ff;">░██████  ░███  </span>░███   ███░  ░███  ░███        ░███
 <span style="color:#ffb300;"> ███     ░░░  </span><span style="color:#3388ff;">░███░███ ░███  </span>░███  ███    ░███  ░███        ░███
