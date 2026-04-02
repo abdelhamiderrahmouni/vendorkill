@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Commands\Concerns;
 
 use App\Services\VersionChecker;
+
 use function Termwind\render;
 
 trait TuiCommand
@@ -420,7 +421,7 @@ trait TuiCommand
 
     protected function printHelp(): void
     {
-        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> field  <fg=yellow>S</> direction  <fg=green>space</> delete  <fg=red>q</> quit</>');
+        $this->line('  <fg=gray>↑↓ move  <fg=blue>←→ page</>  <fg=yellow>s</> sort  <fg=yellow>S</> direction  <fg=green>space</> delete  <fg=red>q</> quit</>');
         $this->newLine();
 
         $this->headerLines += 2;
@@ -844,13 +845,13 @@ trait TuiCommand
         $reset = "\033[0m";
 
         $this->line($blue);
-        $this->line("  ╔══════════════════════════════════════════════════════════════╗");
-        $this->line("  ║                                                              ║");
+        $this->line('  ╔══════════════════════════════════════════════════════════════╗');
+        $this->line('  ║                                                              ║');
         $this->line("  ║                   {$white}Thanks for using cnKill!{$blue}                   ║");
-        $this->line("  ║                                                              ║");
-        $this->line("  ╠══════════════════════════════════════════════════════════════╣");
-        $this->line("  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║");
-        $this->line("  ╚══════════════════════════════════════════════════════════════╝");
+        $this->line('  ║                                                              ║');
+        $this->line('  ╠══════════════════════════════════════════════════════════════╣');
+        $this->line('  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║');
+        $this->line('  ╚══════════════════════════════════════════════════════════════╝');
         $this->line($reset);
         $this->line("\033[0m");
 
