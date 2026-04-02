@@ -103,17 +103,17 @@ class UpgradeCommand extends Command
 
         if ($composer === null) {
             $this->line('  <fg=red>composer not found in PATH.</>');
-            $this->line('  Run manually: <fg=cyan>composer global update abdelhamiderrahmouni/cnkill</>');
+            $this->line('  Run manually: <fg=cyan>composer global update barnphp/cnkill</>');
             $this->newLine();
 
             return self::FAILURE;
         }
 
-        $this->line("  Running: <fg=cyan>{$composer} global update abdelhamiderrahmouni/cnkill</>");
+        $this->line("  Running: <fg=cyan>{$composer} global update barnphp/cnkill</>");
         $this->newLine();
 
         $proc = proc_open(
-            [$composer, 'global', 'update', 'abdelhamiderrahmouni/cnkill'],
+            [$composer, 'global', 'update', 'barnphp/cnkill'],
             [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
             $pipes
         );

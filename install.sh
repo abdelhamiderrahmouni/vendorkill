@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-REPO="abdelhamiderrahmouni/cnkill"
+REPO="barnphp/cnkill"
 INSTALL_MODE="local"
 INSTALL_DIR=""
 

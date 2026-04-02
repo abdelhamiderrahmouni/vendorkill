@@ -6,9 +6,9 @@ namespace App\Services;
 
 class VersionChecker
 {
-    private const REPO = 'abdelhamiderrahmouni/cnkill';
+    private const REPO = 'barnphp/cnkill';
 
-    private const API_URL = 'https://api.github.com/repos/abdelhamiderrahmouni/cnkill/releases/latest';
+    private const API_URL = 'https://api.github.com/repos/barnphp/cnkill/releases/latest';
 
     private const CACHE_TTL = 86400; // 24 hours
 
@@ -236,7 +236,7 @@ class VersionChecker
      */
     public function isComposerInstall(): bool
     {
-        $needle = implode(DIRECTORY_SEPARATOR, ['vendor', 'abdelhamiderrahmouni', 'cnkill']);
+        $needle = implode(DIRECTORY_SEPARATOR, ['vendor', 'barnphp', 'cnkill']);
 
         return str_contains($this->getCurrentBinaryPath(), $needle);
     }

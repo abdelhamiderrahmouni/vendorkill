@@ -9,10 +9,10 @@
 <span style="color:#ffb300;"> ░░█████████  </span><span style="color:#3388ff;">█████  ░░█████ </span>█████ ░░████ █████ ███████████ ███████████
 <span style="color:#ffb300;">  ░░░░░░░░░  </span><span style="color:#3388ff;">░░░░░    ░░░░░ </span>░░░░░   ░░░░ ░░░░░ ░░░░░░░░░░░ ░░░░░░░░░░░
 </pre>
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/run-tests.yml?branch=master&label=tests&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3Arun-tests+branch%3Amaster)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/abdelhamiderrahmouni/cnkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/abdelhamiderrahmouni/cnkill/actions?query=workflow%3A"pint"+branch%3Amaster)
-[![Total Downloads](https://img.shields.io/packagist/dt/abdelhamiderrahmouni/cnkill.svg?style=flat-square)](https://packagist.org/packages/abdelhamiderrahmouni/cnkill)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/barnphp/cnkill.svg?style=flat-square)](https://packagist.org/packages/barnphp/cnkill)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/barnphp/cnkill/run-tests.yml?branch=master&label=tests&style=flat-square)](https://github.com/barnphp/cnkill/actions?query=workflow%3Arun-tests+branch%3Amaster)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/barnphp/cnkill/pint.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/barnphp/cnkill/actions?query=workflow%3A"pint"+branch%3Amaster)
+[![Total Downloads](https://img.shields.io/packagist/dt/barnphp/cnkill.svg?style=flat-square)](https://packagist.org/packages/barnphp/cnkill)
 
 A Blazing Fast, Interactive TUI tool (like `npkill`) to find and delete `vendor/` and `node_modules/` directories in your old projects — freeing up disk space fast.
 
@@ -22,25 +22,25 @@ We provide multiple installation methods to suit your preferences. The recommend
 1. Quick install (Linux/macOS, standalone executable):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/barnphp/cnkill/master/install.sh | sh
 ```
 
 2. System-wide install (requires sudo):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/abdelhamiderrahmouni/cnkill/master/install.sh | sh -s -- --system
+curl -fsSL https://raw.githubusercontent.com/barnphp/cnkill/master/install.sh | sh -s -- --system
 ```
 
 3. Install via cpx (the npx for PHP):
 
 ```bash
-cpx abdelhamiderrahmouni/cnkill
+cpx barnphp/cnkill
 ```
 
 4. Install globally via Composer:
 
 ```bash
-composer global require abdelhamiderrahmouni/cnkill
+composer global require barnphp/cnkill
 ```
 
 You will find it installed in `~/.composer/vendor/bin` or `~/.config/composer/vendor/bin`.
@@ -94,7 +94,7 @@ cnkill cache --sort=modified  # sort caches by last modified
 - [x] Async size calculation and deletion
 - [ ] Add support for Windows
 - [x] Add a build workflow to publish release binaries automatically
-- ... share your ideas in the [issues](https://github.com/abdelhamiderrahmouni/cnkill/issues)
+- ... share your ideas in the [issues](https://github.com/barnphp/cnkill/issues)
 
 ## Changelog
 
@@ -106,7 +106,7 @@ Please see [CONTRIBUTING](/.github/CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
-Please open an [issue](https://github.com/abdelhamiderrahmouni/cnkill/issues) to report any security vulnerabilities.
+Please open an [issue](https://github.com/barnphp/cnkill/issues) to report any security vulnerabilities.
 
 ## Credits
 

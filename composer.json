@@ -1,12 +1,12 @@
 {
-    "name": "abdelhamiderrahmouni/cnkill",
+    "name": "barnphp/cnkill",
     "description": "Remove composer vendor and node_modules directories in your projects to save disk space.",
     "keywords": ["composer", "npkill", "cnkill", "vendor", "node_modules", "storage", "clean", "remove", "delete", "space", "disk", "free", "clear", "cleaner", "vendorkill"],
-    "homepage": "https://github.com/abdelhamiderrahmouni/cnkill",
+    "homepage": "https://github.com/barnphp/cnkill",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/abdelhamiderrahmouni/cnkill/issues",
-        "source": "https://github.com/abdelhamiderrahmouni/cnkill"
+        "issues": "https://github.com/barnphp/cnkill/issues",
+        "source": "https://github.com/barnphp/cnkill"
     },
     "authors": [
         {
