@@ -19,13 +19,33 @@ class VersionChecker
     // -------------------------------------------------------------------------
 
     /**
+     * Resolve the current user's home directory.
+     */
+    private function resolveHomeDir(): string
+    {
+        if (isset($_SERVER['HOME']) && $_SERVER['HOME'] !== '') {
+            return rtrim((string) $_SERVER['HOME'], DIRECTORY_SEPARATOR);
+        }
+
+        if (function_exists('posix_getuid')) {
+            $entry = posix_getpwuid(posix_getuid());
+
+            if (is_array($entry) && isset($entry['dir']) && $entry['dir'] !== '') {
+                return rtrim((string) $entry['dir'], DIRECTORY_SEPARATOR);
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Resolve the directory used for caching version data.
      * Respects XDG_CACHE_HOME; falls back to ~/.cache on all platforms.
      */
     public function getCacheDir(): string
     {
         $xdg = rtrim((string) ($_SERVER['XDG_CACHE_HOME'] ?? ''), DIRECTORY_SEPARATOR);
-        $home = rtrim((string) ($_SERVER['HOME'] ?? ''), DIRECTORY_SEPARATOR);
+        $home = $this->resolveHomeDir();
 
         if ($xdg !== '') {
             $base = $xdg;

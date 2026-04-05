@@ -300,10 +300,7 @@ class CnKill extends Command
      */
     protected function resolveExcludePaths(): array
     {
-        $home = rtrim((string) ($_SERVER['HOME'] ?? (function_exists('posix_getuid')
-            ? (posix_getpwuid(posix_getuid())['dir'] ?? '')
-            : '')), DIRECTORY_SEPARATOR);
-
+        $home = $this->resolveHomeDir();
         $xdgCache = rtrim((string) ($_SERVER['XDG_CACHE_HOME'] ?? ''), DIRECTORY_SEPARATOR) ?: $home . '/.cache';
 
         $candidates = [

@@ -98,21 +98,7 @@ class CacheKill extends Command
             $this->newLine();
             $this->line('  <fg=green>No package manager caches found.</>');
             $this->newLine();
-
-            $blue = "\033[1;34m";
-            $white = "\033[1;37m";
-            $reset = "\033[0m";
-
-            $this->line($blue);
-            $this->line('  ╔══════════════════════════════════════════════════════════════╗');
-            $this->line('  ║                                                              ║');
-            $this->line("  ║                   {$white}Thanks for using cnKill!{$blue}                   ║");
-            $this->line('  ║                                                              ║');
-            $this->line('  ╠══════════════════════════════════════════════════════════════╣');
-            $this->line('  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║');
-            $this->line('  ╚══════════════════════════════════════════════════════════════╝');
-            $this->line($reset);
-            $this->line("\033[0m");
+            $this->thanks();
 
             return 0;
         }
@@ -186,10 +172,7 @@ class CacheKill extends Command
      */
     protected function resolveCachePaths(): array
     {
-        $home = rtrim((string) ($_SERVER['HOME'] ?? (function_exists('posix_getuid')
-            ? (posix_getpwuid(posix_getuid())['dir'] ?? '')
-            : '')), DIRECTORY_SEPARATOR);
-
+        $home = $this->resolveHomeDir();
         $xdgCache = rtrim((string) ($_SERVER['XDG_CACHE_HOME'] ?? ''), DIRECTORY_SEPARATOR) ?: $home . '/.cache';
 
         $candidates = [

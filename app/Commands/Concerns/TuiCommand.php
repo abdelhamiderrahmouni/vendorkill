@@ -867,4 +867,25 @@ trait TuiCommand
     abstract protected function headerDescription(): string;
 
     abstract protected function writeListLines(): void;
+
+    /**
+     * Resolve the current user's home directory.
+     * Prefers $_SERVER['HOME'], then falls back to posix_getpwuid when available.
+     */
+    protected function resolveHomeDir(): string
+    {
+        if (isset($_SERVER['HOME']) && $_SERVER['HOME'] !== '') {
+            return rtrim((string) $_SERVER['HOME'], DIRECTORY_SEPARATOR);
+        }
+
+        if (function_exists('posix_getuid')) {
+            $entry = posix_getpwuid(posix_getuid());
+
+            if (is_array($entry) && isset($entry['dir']) && $entry['dir'] !== '') {
+                return rtrim((string) $entry['dir'], DIRECTORY_SEPARATOR);
+            }
+        }
+
+        return '';
+    }
 }

@@ -28,14 +28,14 @@ class ConfigCommand extends Command
      */
     protected $description = 'Configure which folder types cnkill scans.';
 
-    public function handle(): int
+    public function handle(ConfigService $config): int
     {
         $action = $this->argument('action');
 
         return match ($action) {
-            'add' => $this->handleAdd(),
-            'remove' => $this->handleRemove(),
-            null => $this->handleList(),
+            'add' => $this->handleAdd($config),
+            'remove' => $this->handleRemove($config),
+            null => $this->handleList($config),
             default => $this->handleUnknownAction((string) $action),
         };
     }
@@ -44,11 +44,8 @@ class ConfigCommand extends Command
     // cnkill config  (checkbox list of all types)
     // -------------------------------------------------------------------------
 
-    private function handleList(): int
+    private function handleList(ConfigService $config): int
     {
-        /** @var ConfigService $config */
-        $config = $this->laravel->make(ConfigService::class);
-
         $allTypes = $config->getAllTypes();
         $currentlyEnabled = $config->getEnabledTypes();
 
@@ -114,10 +111,8 @@ class ConfigCommand extends Command
     // cnkill config add
     // -------------------------------------------------------------------------
 
-    private function handleAdd(): int
+    private function handleAdd(ConfigService $config): int
     {
-        /** @var ConfigService $config */
-        $config = $this->laravel->make(ConfigService::class);
 
         $this->newLine();
         $this->line('  <options=bold>cnkill config add</> — define a custom folder type to scan.');
@@ -249,10 +244,8 @@ class ConfigCommand extends Command
     // cnkill config remove
     // -------------------------------------------------------------------------
 
-    private function handleRemove(): int
+    private function handleRemove(ConfigService $config): int
     {
-        /** @var ConfigService $config */
-        $config = $this->laravel->make(ConfigService::class);
         $customTypes = $config->getCustomTypes();
 
         $this->newLine();

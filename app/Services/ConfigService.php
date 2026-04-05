@@ -217,8 +217,8 @@ class ConfigService
         }
 
         // Derive a unique key from the first name/path segment.
-        $slug = $type['names'][0] ?? preg_replace('/[^a-z0-9\-]/', '-', strtolower($type['paths'][0] ?? 'custom'));
-        $slug = ltrim(preg_replace('/[^a-z0-9\-]/', '-', strtolower((string) $slug)), '.-');
+        $raw = $type['names'][0] ?? $type['paths'][0] ?? 'custom';
+        $slug = ltrim((string) preg_replace('/[^a-z0-9\-]/', '-', strtolower($raw)), '.-');
         $baseKey = 'custom:' . $slug;
         $key = $baseKey;
         $suffix = 2;
