@@ -574,31 +574,25 @@ class CnKill extends Command
     }
 
     /**
-     * Check whether the project directory contains any known manifest file.
-     * For the 'android' type, look inside the android/ subdirectory.
+     * Check whether the project directory contains a manifest file declared by
+     * this folder type. For 'android', the parent is <project>/android/ so we
+     * check both that directory and one level up (<project>/).
      */
     protected function hasManifest(string $parent, string $typeKey): bool
     {
-        // For android/build the parent is <project>/android — check one level up
-        // for project-level manifests AND the android directory itself.
+        $manifests = ConfigService::FOLDER_TYPES[$typeKey]['manifests'] ?? [];
+
+        $searchDirs = [$parent];
+
         if ($typeKey === 'android') {
-            $projectRoot = dirname($parent); // <project>/android → <project>
-            foreach (ConfigService::MANIFESTS as $manifest) {
-                if (file_exists($parent . DIRECTORY_SEPARATOR . $manifest)) {
-                    return true;
-                }
-
-                if (file_exists($projectRoot . DIRECTORY_SEPARATOR . $manifest)) {
-                    return true;
-                }
-            }
-
-            return false;
+            $searchDirs[] = dirname($parent); // <project>/android → <project>
         }
 
-        foreach (ConfigService::MANIFESTS as $manifest) {
-            if (file_exists($parent . DIRECTORY_SEPARATOR . $manifest)) {
-                return true;
+        foreach ($searchDirs as $dir) {
+            foreach ($manifests as $manifest) {
+                if (file_exists($dir . DIRECTORY_SEPARATOR . $manifest)) {
+                    return true;
+                }
             }
         }
 
@@ -623,44 +617,26 @@ class CnKill extends Command
 
     /**
      * Resolve the most useful last-modified timestamp we can show for a project.
+     * Lock files and manifests declared by the type are checked in addition to
+     * the project directory and the build directory itself.
      */
     protected function resolveLastModified(string $projectPath, string $dir, string $typeKey): ?int
     {
+        $lockfiles = ConfigService::FOLDER_TYPES[$typeKey]['lockfiles'] ?? [];
+
+        // Start with the directory itself and its project root
         $candidates = [$projectPath, $dir];
 
-        if ($typeKey === 'node') {
-            $candidates = array_merge($candidates, [
-                $projectPath . DIRECTORY_SEPARATOR . 'package.json',
-                $projectPath . DIRECTORY_SEPARATOR . 'package-lock.json',
-                $projectPath . DIRECTORY_SEPARATOR . 'pnpm-lock.yaml',
-                $projectPath . DIRECTORY_SEPARATOR . 'yarn.lock',
-                $projectPath . DIRECTORY_SEPARATOR . 'bun.lock',
-                $projectPath . DIRECTORY_SEPARATOR . 'bun.lockb',
-            ]);
-        } elseif ($typeKey === 'vendor') {
-            $candidates = array_merge($candidates, [
-                $projectPath . DIRECTORY_SEPARATOR . 'composer.json',
-                $projectPath . DIRECTORY_SEPARATOR . 'composer.lock',
-            ]);
-        } elseif ($typeKey === 'android') {
-            // projectPath is <project>/android; check both android/ and the project root
-            $projectRoot = dirname($projectPath);
-            $candidates = array_merge($candidates, [
-                $projectPath . DIRECTORY_SEPARATOR . 'build.gradle',
-                $projectPath . DIRECTORY_SEPARATOR . 'build.gradle.kts',
-                $projectRoot . DIRECTORY_SEPARATOR . 'package.json',
-                $projectRoot . DIRECTORY_SEPARATOR . 'pubspec.yaml',
-            ]);
-        } else {
-            // JS-based build output types — lock files in the project root are the best signal
-            $candidates = array_merge($candidates, [
-                $projectPath . DIRECTORY_SEPARATOR . 'package.json',
-                $projectPath . DIRECTORY_SEPARATOR . 'package-lock.json',
-                $projectPath . DIRECTORY_SEPARATOR . 'pnpm-lock.yaml',
-                $projectPath . DIRECTORY_SEPARATOR . 'yarn.lock',
-                $projectPath . DIRECTORY_SEPARATOR . 'bun.lock',
-                $projectPath . DIRECTORY_SEPARATOR . 'bun.lockb',
-            ]);
+        // For android/build, projectPath is <project>/android — also probe the project root
+        $probeDirs = [$projectPath];
+        if ($typeKey === 'android') {
+            $probeDirs[] = dirname($projectPath);
+        }
+
+        foreach ($probeDirs as $base) {
+            foreach ($lockfiles as $file) {
+                $candidates[] = $base . DIRECTORY_SEPARATOR . $file;
+            }
         }
 
         $lastModified = null;

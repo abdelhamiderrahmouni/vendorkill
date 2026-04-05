@@ -13,13 +13,19 @@ namespace App\Services;
 class ConfigService
 {
     /**
-     * The complete list of all known folder types, their display names, default
-     * enabled state, and the directory names / path patterns that `find` should look for.
+     * The complete list of all known folder types.
      *
-     * 'names'  — simple directory names matched with -name (single segment)
-     * 'paths'  — path patterns matched with -path (multi-segment, e.g. android/build)
+     * Keys:
+     *   'label'      — human-readable name shown in `cnkill config`
+     *   'default'    — whether the type is enabled when no config file exists
+     *   'names'      — simple directory names matched with `find -name` (single segment)
+     *   'paths'      — path patterns matched with `find -path` (multi-segment, e.g. android/build)
+     *   'manifests'  — files that must exist in the parent directory to confirm a real project;
+     *                  for the 'android' type these are checked in both the immediate parent
+     *                  (<project>/android/) and one level up (<project>/).
+     *   'lockfiles'  — additional files used to resolve the best last-modified timestamp to display
      *
-     * @var array<string, array{label: string, default: bool, names: string[], paths: string[]}>
+     * @var array<string, array{label: string, default: bool, names: string[], paths: string[], manifests: string[], lockfiles: string[]}>
      */
     public const FOLDER_TYPES = [
         'vendor' => [
@@ -27,107 +33,122 @@ class ConfigService
             'default' => true,
             'names' => ['vendor'],
             'paths' => [],
+            'manifests' => ['composer.json'],
+            'lockfiles' => ['composer.json', 'composer.lock'],
         ],
         'node' => [
             'label' => 'node_modules  (npm / pnpm / yarn / bun)',
             'default' => true,
             'names' => ['node_modules'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'next' => [
             'label' => '.next  (Next.js build output)',
             'default' => true,
             'names' => ['.next'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'expo' => [
             'label' => '.expo  (Expo / React Native)',
             'default' => true,
             'names' => ['.expo'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'turbo' => [
             'label' => '.turbo  (Turborepo cache)',
             'default' => true,
             'names' => ['.turbo'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'svelte-kit' => [
             'label' => '.svelte-kit  (SvelteKit build output)',
             'default' => true,
             'names' => ['.svelte-kit'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'nuxt' => [
             'label' => '.nuxt  (Nuxt build output)',
             'default' => true,
             'names' => ['.nuxt'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'cache' => [
             'label' => '.cache  (generic tool cache)',
             'default' => true,
             'names' => ['.cache'],
             'paths' => [],
+            'manifests' => ['package.json', 'composer.json', 'Cargo.toml', 'pyproject.toml', 'go.mod'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'parcel-cache' => [
             'label' => '.parcel-cache  (Parcel bundler cache)',
             'default' => true,
             'names' => ['.parcel-cache'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'coverage' => [
             'label' => 'coverage  (test coverage reports)',
             'default' => true,
             'names' => ['coverage'],
             'paths' => [],
+            'manifests' => ['package.json', 'composer.json', 'pyproject.toml', 'go.mod'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'composer.json', 'composer.lock'],
         ],
         'output' => [
             'label' => '.output  (Nitro / Nuxt server output)',
             'default' => true,
             'names' => ['.output'],
             'paths' => [],
+            'manifests' => ['package.json'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'],
         ],
         'dist' => [
             'label' => 'dist  (build distribution — may have false positives)',
             'default' => false,
             'names' => ['dist'],
             'paths' => [],
+            'manifests' => ['package.json', 'composer.json', 'Cargo.toml', 'pyproject.toml'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'composer.json', 'composer.lock'],
         ],
         'build' => [
             'label' => 'build  (generic build output — may have false positives)',
             'default' => false,
             'names' => ['build'],
             'paths' => [],
+            'manifests' => ['package.json', 'composer.json', 'Cargo.toml', 'pyproject.toml', 'go.mod', 'build.gradle', 'build.gradle.kts'],
+            'lockfiles' => ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'composer.json', 'composer.lock'],
         ],
         'derived-data' => [
             'label' => 'DerivedData  (Xcode)',
             'default' => false,
             'names' => ['DerivedData'],
             'paths' => [],
+            'manifests' => ['Package.swift', 'project.pbxproj'],
+            'lockfiles' => ['Package.swift', 'Package.resolved'],
         ],
         'android' => [
             'label' => 'android/build  (Android / Gradle)',
             'default' => false,
             'names' => [],
             'paths' => ['*/android/build'],
+            // Checked in both the immediate parent (<project>/android/) and project root
+            'manifests' => ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'package.json', 'pubspec.yaml'],
+            'lockfiles' => ['build.gradle', 'build.gradle.kts', 'package.json', 'pubspec.yaml'],
         ],
-    ];
-
-    /**
-     * The manifest files that indicate a real project directory.
-     * A discovered folder is only registered if one of these exists in the parent.
-     *
-     * @var string[]
-     */
-    public const MANIFESTS = [
-        'package.json',
-        'composer.json',
-        'Cargo.toml',
-        'pyproject.toml',
-        'go.mod',
-        'build.gradle',
-        'build.gradle.kts',
     ];
 
     /**
