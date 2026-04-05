@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Commands\Concerns\TuiCommand;
+use App\Prompts\DirectoryListPrompt;
+use App\Prompts\Renderers\DirectoryListRenderer;
+use Laravel\Prompts\Key;
 use LaravelZero\Framework\Commands\Command;
 
 use function Termwind\render;
@@ -78,6 +81,11 @@ class CacheKill extends Command
      */
     protected array $deleteProcs = [];
 
+    /**
+     * The Laravel Prompts component that owns list rendering each frame.
+     */
+    protected ?DirectoryListPrompt $listPrompt = null;
+
     public function handle(): int
     {
         if (! $this->initializeSortMode()) {
@@ -96,15 +104,16 @@ class CacheKill extends Command
             $reset = "\033[0m";
 
             $this->line($blue);
-            $this->line("  ╔══════════════════════════════════════════════════════════════╗");
-            $this->line("  ║                                                              ║");
+            $this->line('  ╔══════════════════════════════════════════════════════════════╗');
+            $this->line('  ║                                                              ║');
             $this->line("  ║                   {$white}Thanks for using cnKill!{$blue}                   ║");
-            $this->line("  ║                                                              ║");
-            $this->line("  ╠══════════════════════════════════════════════════════════════╣");
-            $this->line("  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║");
-            $this->line("  ╚══════════════════════════════════════════════════════════════╝");
+            $this->line('  ║                                                              ║');
+            $this->line('  ╠══════════════════════════════════════════════════════════════╣');
+            $this->line('  ║        ⚡ Fast • Clean • Powerful • Built for Devs ⚡          ║');
+            $this->line('  ╚══════════════════════════════════════════════════════════════╝');
             $this->line($reset);
             $this->line("\033[0m");
+
             return 0;
         }
 
@@ -123,6 +132,34 @@ class CacheKill extends Command
             ];
             $this->enqueueSizeProcess($dir);
         }
+
+        $this->listPrompt = new DirectoryListPrompt(
+            entries: $this->state,
+            dirs: $this->dirs,
+            termWidth: $this->termWidth,
+            visibleRows: $this->visibleRows,
+            onDelete: function (string $dir): void {
+                $this->state[$dir]['status'] = 'deleting';
+                $this->startDeleteProcess($dir);
+            },
+            onSortCycle: function (): void {
+                $this->cycleSortMode();
+                if ($this->listPrompt !== null) {
+                    $this->listPrompt->highlighted = 0;
+                    $this->listPrompt->firstVisible = 0;
+                }
+            },
+            onSortToggle: function (): void {
+                $this->toggleSortDirection();
+                if ($this->listPrompt !== null) {
+                    $this->listPrompt->highlighted = 0;
+                    $this->listPrompt->firstVisible = 0;
+                }
+            },
+            onQuit: function (): void {
+                $this->running = false;
+            },
+        );
 
         $this->runTuiLoop(function (): void {
             $this->pollSizeProcesses();
@@ -212,56 +249,79 @@ class CacheKill extends Command
 
     protected function writeListLines(): void
     {
-        $visibleDirs = $this->syncCursorState($this->visibleDirs());
-        $count = count($visibleDirs);
+        if ($this->listPrompt === null) {
+            return;
+        }
+
+        $sortedDirs = $this->visibleDirs();
+
+        $this->listPrompt->highlighted = $this->cursor;
+        $this->listPrompt->firstVisible = $this->scrollOffset;
+        $this->listPrompt->scroll = $this->visibleRows;
+        $this->listPrompt->termWidth = $this->termWidth;
+        $this->listPrompt->spinnerFrame = $this->spinnerFrames[$this->spinnerFrame];
+        $this->listPrompt->isSearching = false;
+        $this->listPrompt->sortIndicator = $this->sortIndicator();
+
+        $count = count($sortedDirs);
         [$totalSize, $allSized, $deletedCount, $freedSize] = $this->computeStats();
+        $this->listPrompt->statusBarLine = $this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize);
+        $this->listPrompt->dirs = $sortedDirs;
 
-        $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
+        $frame = (new DirectoryListRenderer($this->listPrompt))($this->listPrompt);
 
-        $numWidth = mb_strlen((string) $count);
-
-        for ($i = $this->scrollOffset; $i < $visibleEnd; $i++) {
-            $dir = $visibleDirs[$i];
-            $info = $this->state[$dir];
-            $isActive = ($i === $this->cursor);
-
-            // prefixLen = 1 (leading space) + 2 (indicator) + numWidth + 1 (dot) + 1 (space)
-            $prefixLen = 1 + 2 + $numWidth + 1 + 1;
-
-            $indicator = $isActive ? '<fg=cyan>▶</> ' : '  ';
-            $number = $this->renderNumber($i + 1, $numWidth, $info['status'], $isActive);
-            [$typeTag, $typeTagText] = $this->renderTypeTag($info['type']);
-            [$badge, $badgeText] = $this->renderBadge($info['status'], $info['size']);
-            $displayLabel = $this->renderLabel($info['label'], $info['status'], $isActive, $prefixLen, $typeTagText, $badgeText);
-            $displayPath = $this->renderPath($dir, $info['status'], $isActive, $prefixLen);
-
-            $this->line(sprintf("\033[K %s%s %s%s%s", $indicator, $number, $displayLabel, $typeTag, $badge));
-            $this->renderedLines++;
-
-            $this->line($displayPath);
-            $this->renderedLines++;
-
-            $this->line("\033[K");
+        $lines = explode("\n", rtrim($frame, "\n"));
+        foreach ($lines as $line) {
+            $this->line($line);
             $this->renderedLines++;
         }
+    }
 
-        // Scroll indicator
-        if ($count > $this->visibleRows) {
-            $this->line(sprintf(
-                "\033[K  <fg=gray>%d–%d of %d</>",
-                $this->scrollOffset + 1,
-                $visibleEnd,
-                $count
-            ));
-            $this->renderedLines++;
+    /**
+     * Forward raw STDIN keys to the DirectoryListPrompt's event system.
+     */
+    protected function handleInput(): void
+    {
+        if ($this->listPrompt === null) {
+            parent::handleInput();
+
+            return;
         }
 
-        $this->line($this->renderSortLine());
-        $this->renderedLines++;
+        $byte = fread(STDIN, 1);
 
-        // Status bar
-        $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize));
-        $this->renderedLines++;
+        if ($byte === false || $byte === '') {
+            return;
+        }
+
+        if ($byte === "\033") {
+            $seq = fread(STDIN, 2);
+
+            $key = match ($seq) {
+                '[A' => Key::UP,
+                '[B' => Key::DOWN,
+                '[C' => Key::RIGHT,
+                '[D' => Key::LEFT,
+                default => $byte . $seq,
+            };
+        } else {
+            $key = $byte;
+        }
+
+        $sortedDirs = $this->visibleDirs();
+        $this->listPrompt->dirs = $sortedDirs;
+        $this->listPrompt->highlighted = $this->cursor;
+        $this->listPrompt->firstVisible = $this->scrollOffset;
+        $this->listPrompt->scroll = $this->visibleRows;
+
+        $this->listPrompt->emit('key', $key);
+
+        $this->cursor = $this->listPrompt->highlighted;
+        $this->scrollOffset = $this->listPrompt->firstVisible;
+
+        if (isset($sortedDirs[$this->cursor])) {
+            $this->activeDir = $sortedDirs[$this->cursor];
+        }
     }
 
     protected function headerDescription(): string

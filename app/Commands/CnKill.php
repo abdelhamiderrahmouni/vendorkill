@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Commands\Concerns\TuiCommand;
+use App\Prompts\DirectoryListPrompt;
+use App\Prompts\Renderers\DirectoryListRenderer;
+use Laravel\Prompts\Key;
 use LaravelZero\Framework\Commands\Command;
 
 class CnKill extends Command
@@ -114,6 +117,11 @@ class CnKill extends Command
      */
     protected array $excludePaths = [];
 
+    /**
+     * The Laravel Prompts component that owns list rendering each frame.
+     */
+    protected ?DirectoryListPrompt $listPrompt = null;
+
     public function handle(): int
     {
         $searchPath = (string) ($this->argument('path') ?? getcwd());
@@ -148,6 +156,38 @@ class CnKill extends Command
 
         // Start the find process in the background (non-blocking)
         $this->startFindProcess($this->searchPath);
+
+        // Build the prompt that owns list rendering each frame.
+        // $this->state and $this->dirs are passed by reference so background
+        // process mutations are immediately visible to the renderer.
+        $this->listPrompt = new DirectoryListPrompt(
+            entries: $this->state,
+            dirs: $this->dirs,
+            termWidth: $this->termWidth,
+            visibleRows: $this->visibleRows,
+            searchPath: $this->searchPath,
+            onDelete: function (string $dir): void {
+                $this->state[$dir]['status'] = 'deleting';
+                $this->startDeleteProcess($dir);
+            },
+            onSortCycle: function (): void {
+                $this->cycleSortMode();
+                if ($this->listPrompt !== null) {
+                    $this->listPrompt->highlighted = 0;
+                    $this->listPrompt->firstVisible = 0;
+                }
+            },
+            onSortToggle: function (): void {
+                $this->toggleSortDirection();
+                if ($this->listPrompt !== null) {
+                    $this->listPrompt->highlighted = 0;
+                    $this->listPrompt->firstVisible = 0;
+                }
+            },
+            onQuit: function (): void {
+                $this->running = false;
+            },
+        );
 
         $this->runTuiLoop(
             function (): void {
@@ -479,66 +519,92 @@ class CnKill extends Command
 
     protected function writeListLines(): void
     {
-        $visibleDirs = $this->syncCursorState($this->visibleDirs());
-        $count = count($visibleDirs);
+        if ($this->listPrompt === null) {
+            return;
+        }
+
+        // Provide the sorted, visible-order dirs to the prompt each frame.
+        $sortedDirs = $this->visibleDirs();
+
+        // Mirror TuiCommand cursor state into the prompt.
+        $this->listPrompt->highlighted = $this->cursor;
+        $this->listPrompt->firstVisible = $this->scrollOffset;
+        $this->listPrompt->scroll = $this->visibleRows;
+        $this->listPrompt->termWidth = $this->termWidth;
+        $this->listPrompt->spinnerFrame = $this->spinnerFrames[$this->spinnerFrame];
+        $this->listPrompt->isSearching = ! $this->findDone;
+        $this->listPrompt->sortIndicator = $this->sortIndicator();
+
+        $count = count($sortedDirs);
         [$totalSize, $allSized, $deletedCount, $freedSize] = $this->computeStats();
+        $this->listPrompt->statusBarLine = $this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize);
 
-        $visibleEnd = min($this->scrollOffset + $this->visibleRows, $count);
+        // Swap prompt's dirs to the current sorted order for rendering, then restore.
+        $this->listPrompt->dirs = $sortedDirs;
 
-        // Empty state while searching — hidden once done (status bar shows "done")
-        if ($count === 0 && ! $this->findDone) {
-            $spinner = $this->spinnerFrames[$this->spinnerFrame];
-            $this->line("\033[K  <fg=gray>{$spinner} Searching...</>");
+        $frame = (new DirectoryListRenderer($this->listPrompt))($this->listPrompt);
+
+        $lines = explode("\n", rtrim($frame, "\n"));
+        foreach ($lines as $line) {
+            $this->line($line);
             $this->renderedLines++;
         }
+    }
 
-        $numWidth = mb_strlen((string) $count);
+    /**
+     * Override TuiCommand's raw-input handler to forward keys to the
+     * DirectoryListPrompt's event system. The prompt's on('key') callbacks
+     * perform navigation and fire onDelete / onSortCycle / onSortToggle / onQuit.
+     * After the prompt handles the key we sync its highlighted/firstVisible back
+     * to TuiCommand's cursor/scrollOffset so the rest of the loop stays consistent.
+     */
+    protected function handleInput(): void
+    {
+        if ($this->listPrompt === null) {
+            parent::handleInput();
 
-        for ($i = $this->scrollOffset; $i < $visibleEnd; $i++) {
-            $dir = $visibleDirs[$i];
-            $info = $this->state[$dir];
-            $isActive = ($i === $this->cursor);
-
-            // prefixLen = 1 (leading space) + 2 (indicator) + numWidth + 1 (dot) + 1 (space)
-            $prefixLen = 1 + 2 + $numWidth + 1 + 1;
-
-            if ($i > 0) {
-                $separatorActive = $isActive || $i - 1 === $this->cursor;
-                $this->line($this->renderSeparator($prefixLen, $separatorActive));
-                $this->renderedLines++;
-            }
-
-            $indicator = $isActive ? '<fg=cyan>▶</> ' : '  ';
-            $number = $this->renderNumber($i + 1, $numWidth, $info['status'], $isActive);
-            [$typeTag, $typeTagText] = $this->renderTypeTag($info['type']);
-            [$badge, $badgeText] = $this->renderBadge($info['status'], $info['size']);
-            $displayProject = $this->renderProject($info['project'], $info['status'], $isActive, $prefixLen, $typeTagText, $badgeText);
-            $displayMeta = $this->renderMetaLine($dir, $info['lastModified'], $info['status'], $isActive, $prefixLen);
-
-            $this->line(sprintf("\033[K %s%s %s%s%s", $indicator, $number, $displayProject, $typeTag, $badge));
-            $this->renderedLines++;
-
-            $this->line($displayMeta);
-            $this->renderedLines++;
+            return;
         }
 
-        // Scroll indicator
-        if ($count > $this->visibleRows) {
-            $this->line(sprintf(
-                "\033[K  <fg=gray>%d–%d of %d</>",
-                $this->scrollOffset + 1,
-                $visibleEnd,
-                $count
-            ));
-            $this->renderedLines++;
+        $byte = fread(STDIN, 1);
+
+        if ($byte === false || $byte === '') {
+            return;
         }
 
-        $this->line($this->renderSortLine());
-        $this->renderedLines++;
+        // Re-assemble multi-byte escape sequences the same way TuiCommand does,
+        // but map them to the Key:: constants the prompt understands.
+        if ($byte === "\033") {
+            $seq = fread(STDIN, 2);
 
-        // Status bar
-        $this->line($this->buildStatusBar($count, $totalSize, $allSized, $deletedCount, $freedSize));
-        $this->renderedLines++;
+            $key = match ($seq) {
+                '[A' => Key::UP,
+                '[B' => Key::DOWN,
+                '[C' => Key::RIGHT,
+                '[D' => Key::LEFT,
+                default => $byte . $seq,
+            };
+        } else {
+            $key = $byte;
+        }
+
+        // Sync the current TuiCommand cursor state into the prompt before the key fires.
+        $sortedDirs = $this->visibleDirs();
+        $this->listPrompt->dirs = $sortedDirs;
+        $this->listPrompt->highlighted = $this->cursor;
+        $this->listPrompt->firstVisible = $this->scrollOffset;
+        $this->listPrompt->scroll = $this->visibleRows;
+
+        // Fire the prompt's key event.
+        $this->listPrompt->emit('key', $key);
+
+        // Sync the prompt's updated cursor back to TuiCommand state.
+        $this->cursor = $this->listPrompt->highlighted;
+        $this->scrollOffset = $this->listPrompt->firstVisible;
+
+        if (isset($sortedDirs[$this->cursor])) {
+            $this->activeDir = $sortedDirs[$this->cursor];
+        }
     }
 
     protected function headerDescription(): string
