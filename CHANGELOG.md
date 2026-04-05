@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1](https://github.com/barnphp/cnkill/releases/tag/v0.6.1) (2026-04-05)
+
+### Chores
+
+- app build ([261c0fa](https://github.com/barnphp/cnkill/commit/261c0fa004ba57ee152fd7003d901c328b547142))
 ## [0.6.0](https://github.com/barnphp/cnkill/releases/tag/v0.6.0) (2026-04-05)
 
 ### Features
