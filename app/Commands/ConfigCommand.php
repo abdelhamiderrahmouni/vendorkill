@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Services\ConfigService;
+use Laravel\Prompts\ConfirmPrompt;
+use Laravel\Prompts\MultiSelectPrompt;
+use Laravel\Prompts\SelectPrompt;
 use LaravelZero\Framework\Commands\Command;
 
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\multiselect;
-use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 
 class ConfigCommand extends Command
@@ -63,16 +63,18 @@ class ConfigCommand extends Command
 
         $this->newLine();
         $this->line('  <options=bold>cnkill config</> — select which folder types to scan.');
-        $this->line('  <fg=gray>Use <space> to toggle, <enter> to save. Run `cnkill config add` to add custom types.</>');
+        $this->line('  <fg=gray>Use <space> to toggle, <enter> to save, <q> to quit. Run `cnkill config add` to add custom types.</>');
         $this->newLine();
 
-        $selected = multiselect(
+        $prompt = new MultiSelectPrompt(
             label: 'Enabled folder types',
             options: $options,
             default: $currentlyEnabled,
             scroll: min(count($options), 20),
             hint: 'Changes take effect immediately for all future scans.',
         );
+        $prompt->on('key', fn (string $key) => $key === 'q' ? exit(0) : null);
+        $selected = $prompt->prompt();
 
         if (! is_array($selected)) {
             $this->newLine();
@@ -116,7 +118,7 @@ class ConfigCommand extends Command
 
         $this->newLine();
         $this->line('  <options=bold>cnkill config add</> — define a custom folder type to scan.');
-        $this->line('  <fg=gray>Press Ctrl-C at any time to cancel.</>');
+        $this->line('  <fg=gray>Press <q> or Ctrl-C at any time to cancel.</>');
         $this->newLine();
 
         // ── 1. Folder name / pattern ─────────────────────────────────────────
@@ -206,7 +208,9 @@ class ConfigCommand extends Command
         $this->line(sprintf('  Lockfiles: <fg=gray>%s</>', $lockfiles ? implode(', ', $lockfiles) : 'none'));
         $this->newLine();
 
-        $confirmed = confirm(label: 'Save this custom type?', default: true);
+        $confirmPrompt = new ConfirmPrompt(label: 'Save this custom type?', default: true);
+        $confirmPrompt->on('key', fn (string $k) => $k === 'q' ? exit(0) : null);
+        $confirmed = $confirmPrompt->prompt();
 
         if (! $confirmed) {
             $this->newLine();
@@ -265,20 +269,24 @@ class ConfigCommand extends Command
             $options[$key] = $type['label'];
         }
 
-        $key = select(
+        $selectPrompt = new SelectPrompt(
             label: 'Which custom type do you want to remove?',
             options: $options,
             scroll: min(count($options), 15),
         );
+        $selectPrompt->on('key', fn (string $k) => $k === 'q' ? exit(0) : null);
+        $key = $selectPrompt->prompt();
 
         $typeLabel = $customTypes[(string) $key]['label'] ?? (string) $key;
 
         $this->newLine();
-        $confirmed = confirm(
+        $confirmPrompt = new ConfirmPrompt(
             label: "Remove \"{$typeLabel}\"?",
             default: false,
             hint: 'This cannot be undone.',
         );
+        $confirmPrompt->on('key', fn (string $k) => $k === 'q' ? exit(0) : null);
+        $confirmed = $confirmPrompt->prompt();
 
         if (! $confirmed) {
             $this->newLine();

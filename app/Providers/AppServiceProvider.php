@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPromptTheme();
+        $this->registerPromptCancelHandler();
 
         $this->app->terminating(function (): void {
             $this->maybeShowUpgradeNotice();
@@ -50,6 +51,22 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Prompt::theme('cnkill');
+    }
+
+    // -------------------------------------------------------------------------
+    // Prompt cancel handler
+    // -------------------------------------------------------------------------
+
+    /**
+     * Register a global cancel handler so that Ctrl-C (and programmatic
+     * cancellations triggered by pressing 'q') exit cleanly with code 0
+     * instead of the default exit(1).
+     */
+    private function registerPromptCancelHandler(): void
+    {
+        Prompt::cancelUsing(function (): never {
+            exit(0);
+        });
     }
 
     // -------------------------------------------------------------------------
