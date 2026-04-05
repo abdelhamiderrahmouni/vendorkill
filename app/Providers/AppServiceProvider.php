@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Prompts\DirectoryListPrompt;
+use App\Prompts\Renderers\DirectoryListRenderer;
 use App\Services\VersionChecker;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Prompts\Prompt;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,6 +17,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerPromptTheme();
+
         $this->app->terminating(function (): void {
             $this->maybeShowUpgradeNotice();
         });
@@ -25,6 +30,24 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(VersionChecker::class);
+    }
+
+    // -------------------------------------------------------------------------
+    // Prompt theme
+    // -------------------------------------------------------------------------
+
+    /**
+     * Register the custom DirectoryListPrompt renderer under the 'cnkill' theme,
+     * then activate it. All built-in prompt renderers fall back to 'default'
+     * automatically via Prompt::getRenderer()'s fallback chain.
+     */
+    private function registerPromptTheme(): void
+    {
+        Prompt::addTheme('cnkill', [
+            DirectoryListPrompt::class => DirectoryListRenderer::class,
+        ]);
+
+        Prompt::theme('cnkill');
     }
 
     // -------------------------------------------------------------------------

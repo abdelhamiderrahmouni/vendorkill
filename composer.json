@@ -16,9 +16,10 @@
     ],
     "require": {
         "php": "^8.1|^8.2",
-        "nunomaduro/termwind": "^1.15.1",
         "ext-pcntl": "*",
-        "ext-posix": "*"
+        "ext-posix": "*",
+        "laravel/prompts": "^0.1.9",
+        "nunomaduro/termwind": "^1.15.1"
     },
     "require-dev": {
         "laravel/pint": "^1.13",
