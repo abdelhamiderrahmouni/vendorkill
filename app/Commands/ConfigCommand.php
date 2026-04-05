@@ -26,7 +26,7 @@ class ConfigCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Configure which folder types cnkill scans.';
+    protected $description = 'Configure which targets cnkill scans.';
 
     public function handle(ConfigService $config): int
     {
@@ -59,7 +59,7 @@ class ConfigCommand extends Command
             $this->line('<fg=blue>' . $line . '</>');
         }
 
-        $this->line('  <fg=gray>Configure which folder types cnkill scans.</>');
+        $this->line('  <fg=gray>Configure which targets cnkill scans.</>');
         $this->line('  <fg=yellow>' . app()->version() . '</>');
         $this->newLine();
     }
@@ -86,12 +86,12 @@ class ConfigCommand extends Command
         }
 
         $this->newLine();
-        $this->line('  <options=bold>cnkill config</> — select which folder types to scan.');
-        $this->line('  <fg=gray>Use <space> to toggle, <enter> to save, <q> to quit. Run `cnkill config add` to add custom types.</>');
+        $this->line('  <options=bold>cnkill config</> — select which targets to scan.');
+        $this->line('  <fg=gray>Use <space> to toggle, <enter> to save, <q> to quit. Run `cnkill config add` to add custom targets.</>');
         $this->newLine();
 
         $prompt = new MultiSelectPrompt(
-            label: 'Enabled folder types',
+            label: 'Enabled targets',
             options: $options,
             default: $currentlyEnabled,
             scroll: min(count($options), 20),
@@ -120,13 +120,13 @@ class ConfigCommand extends Command
         }
 
         $count = count($selected);
-        $dirWord = $count === 1 ? 'type' : 'types';
-        $this->line("  <fg=green;options=bold>Saved.</> {$count} folder {$dirWord} enabled.");
+        $dirWord = $count === 1 ? 'target' : 'targets';
+        $this->line("  <fg=green;options=bold>Saved.</> {$count} {$dirWord} enabled.");
         $this->line('  <fg=gray>Config stored at: ' . $config->configPath() . '</>');
         $this->newLine();
 
         if ($count === 0) {
-            $this->line('  <fg=yellow>Warning: no folder types enabled — cnkill will not find anything.</>');
+            $this->line('  <fg=yellow>Warning: no targets enabled — cnkill will not find anything.</>');
             $this->newLine();
         }
 
@@ -141,7 +141,7 @@ class ConfigCommand extends Command
     {
 
         $this->newLine();
-        $this->line('  <options=bold>cnkill config add</> — define a custom folder type to scan.');
+        $this->line('  <options=bold>cnkill config add</> — define a custom target to scan.');
         $this->line('  <fg=gray>Press <q> or Ctrl-C at any time to cancel.</>');
         $this->newLine();
 
@@ -232,7 +232,7 @@ class ConfigCommand extends Command
         $this->line(sprintf('  Lockfiles: <fg=gray>%s</>', $lockfiles ? implode(', ', $lockfiles) : 'none'));
         $this->newLine();
 
-        $confirmPrompt = new ConfirmPrompt(label: 'Save this custom type?', default: true);
+        $confirmPrompt = new ConfirmPrompt(label: 'Save this custom target?', default: true);
         $confirmPrompt->on('key', fn (string $k) => $k === 'q' ? exit(0) : null);
         $confirmed = $confirmPrompt->prompt();
 
@@ -261,7 +261,7 @@ class ConfigCommand extends Command
             return 1;
         }
 
-        $this->line("  <fg=green;options=bold>Saved.</> Custom type <fg=cyan>{$folderInput}</> added and enabled.");
+        $this->line("  <fg=green;options=bold>Saved.</> Custom target <fg=cyan>{$folderInput}</> added and enabled.");
         $this->line('  <fg=gray>Config stored at: ' . $config->configPath() . '</>');
         $this->newLine();
 
@@ -279,13 +279,13 @@ class ConfigCommand extends Command
         $this->newLine();
 
         if (empty($customTypes)) {
-            $this->line('  <fg=yellow>No custom types defined yet. Run `cnkill config add` to add one.</>');
+            $this->line('  <fg=yellow>No custom targets defined yet. Run `cnkill config add` to add one.</>');
             $this->newLine();
 
             return 0;
         }
 
-        $this->line('  <options=bold>cnkill config remove</> — delete a custom folder type.');
+        $this->line('  <options=bold>cnkill config remove</> — delete a custom target.');
         $this->newLine();
 
         $options = [];
@@ -294,7 +294,7 @@ class ConfigCommand extends Command
         }
 
         $selectPrompt = new SelectPrompt(
-            label: 'Which custom type do you want to remove?',
+            label: 'Which custom target do you want to remove?',
             options: $options,
             scroll: min(count($options), 15),
         );
@@ -325,7 +325,7 @@ class ConfigCommand extends Command
         $this->newLine();
 
         if (! $removed) {
-            $this->line('  <fg=red>Failed to remove type or write config.</>');
+            $this->line('  <fg=red>Failed to remove target or write config.</>');
             $this->newLine();
 
             return 1;
