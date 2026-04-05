@@ -7,6 +7,7 @@ namespace App\Commands;
 use App\Commands\Concerns\TuiCommand;
 use App\Prompts\DirectoryListPrompt;
 use App\Prompts\Renderers\DirectoryListRenderer;
+use App\Services\ConfigService;
 use Laravel\Prompts\Key;
 use LaravelZero\Framework\Commands\Command;
 
@@ -23,6 +24,19 @@ class CnKill extends Command
                                      {--maxdepth= : The maximum depth to search for vendor directories}
                                      {--node : Search for node_modules directories only}
                                      {--composer : Search for composer vendor directories only}
+                                     {--next : Search for .next directories only}
+                                     {--expo : Search for .expo directories only}
+                                     {--turbo : Search for .turbo directories only}
+                                     {--svelte-kit : Search for .svelte-kit directories only}
+                                     {--nuxt : Search for .nuxt directories only}
+                                     {--cache : Search for .cache directories only}
+                                     {--parcel-cache : Search for .parcel-cache directories only}
+                                     {--coverage : Search for coverage directories only}
+                                     {--output : Search for .output directories only}
+                                     {--dist : Search for dist directories only}
+                                     {--build : Search for build directories only}
+                                     {--derived-data : Search for DerivedData (Xcode) directories only}
+                                     {--android : Search for android/build (Gradle) directories only}
                                      {--sort=default : Sort by default, name, size, or modified}';
 
     /**
@@ -30,7 +44,7 @@ class CnKill extends Command
      *
      * @var string
      */
-    protected $description = 'Delete composer vendor / node_modules directories.';
+    protected $description = 'Delete dev build/dependency directories (vendor, node_modules, .next, etc.).';
 
     /**
      * State array tracking each vendor directory's info.
@@ -100,14 +114,11 @@ class CnKill extends Command
     protected array $deleteProcs = [];
 
     /**
-     * Cached value of --composer option (set once in handle()).
+     * The active folder type keys to scan (resolved once in handle()).
+     *
+     * @var string[]
      */
-    protected bool $composerMode = false;
-
-    /**
-     * Cached value of --node option (set once in handle()).
-     */
-    protected bool $nodeMode = false;
+    protected array $activeTypes = [];
 
     /**
      * Global package-manager cache directories to exclude from scanning.
@@ -135,10 +146,6 @@ class CnKill extends Command
 
         $this->searchPath = $this->normalizePath($resolvedSearchPath);
 
-        // Cache options once — avoids repeated option() calls in the hot render loop
-        $this->composerMode = (bool) $this->option('composer');
-        $this->nodeMode = (bool) $this->option('node');
-
         // Validate --maxdepth early, before entering raw mode
         $maxdepth = $this->option('maxdepth');
         if ($maxdepth !== null && (! ctype_digit((string) $maxdepth) || (int) $maxdepth < 1)) {
@@ -148,6 +155,15 @@ class CnKill extends Command
         }
 
         if (! $this->initializeSortMode()) {
+            return 1;
+        }
+
+        // Resolve which folder types to scan
+        $this->activeTypes = $this->resolveActiveTypes();
+
+        if (empty($this->activeTypes)) {
+            $this->error('No folder types are enabled. Run `cnkill config` to enable some.');
+
             return 1;
         }
 
@@ -166,6 +182,7 @@ class CnKill extends Command
             termWidth: $this->termWidth,
             visibleRows: $this->visibleRows,
             searchPath: $this->searchPath,
+            singleTypeMode: count($this->activeTypes) === 1,
             onDelete: function (string $dir): void {
                 $this->state[$dir]['status'] = 'deleting';
                 $this->startDeleteProcess($dir);
@@ -208,6 +225,58 @@ class CnKill extends Command
         $this->thanks();
 
         return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Active type resolution
+    // -------------------------------------------------------------------------
+
+    /**
+     * Determine which folder type keys to scan.
+     *
+     * If any per-type CLI flag is set, those flags define the exclusive set
+     * (overrides config). Otherwise the user's saved config (or defaults) is used.
+     *
+     * @return string[]
+     */
+    protected function resolveActiveTypes(): array
+    {
+        // Map CLI option names → type keys
+        $flagMap = [
+            'node' => 'node',
+            'composer' => 'vendor',
+            'next' => 'next',
+            'expo' => 'expo',
+            'turbo' => 'turbo',
+            'svelte-kit' => 'svelte-kit',
+            'nuxt' => 'nuxt',
+            'cache' => 'cache',
+            'parcel-cache' => 'parcel-cache',
+            'coverage' => 'coverage',
+            'output' => 'output',
+            'dist' => 'dist',
+            'build' => 'build',
+            'derived-data' => 'derived-data',
+            'android' => 'android',
+        ];
+
+        $flaggedTypes = [];
+        foreach ($flagMap as $flag => $type) {
+            if ($this->option($flag)) {
+                $flaggedTypes[] = $type;
+            }
+        }
+
+        // If any flag is set, use those exclusively (override config)
+        if (! empty($flaggedTypes)) {
+            return $flaggedTypes;
+        }
+
+        // Otherwise, load from config (falls back to defaults)
+        /** @var ConfigService $configService */
+        $configService = $this->laravel->make(ConfigService::class);
+
+        return $configService->getEnabledTypes();
     }
 
     // -------------------------------------------------------------------------
@@ -255,10 +324,12 @@ class CnKill extends Command
 
     /**
      * Launch `find` as a non-blocking background process.
+     * Builds a single `find` invocation that covers all active folder types.
      */
     protected function startFindProcess(string $searchPath): void
     {
         $maxdepth = $this->option('maxdepth');
+        $types = ConfigService::FOLDER_TYPES;
 
         $args = ['find', $searchPath];
 
@@ -272,51 +343,66 @@ class CnKill extends Command
             $args = array_merge($args, ['-path', $excluded, '-prune', '-o']);
         }
 
-        if ($this->nodeMode) {
-            // Prune vendor (don't print), prune+print node_modules
-            $args = array_merge($args, [
-                '(',
-                '-name', 'vendor',
-                '-prune',
-                ')',
-                '-o',
-                '(',
-                '-type', 'd',
-                '-name', 'node_modules',
-                '-prune',
-                '-print',
-                ')',
-            ]);
-        } elseif ($this->composerMode) {
-            // Prune node_modules (don't print), prune+print vendor
-            $args = array_merge($args, [
-                '(',
-                '-name', 'node_modules',
-                '-prune',
-                ')',
-                '-o',
-                '(',
-                '-type', 'd',
-                '-name', 'vendor',
-                '-prune',
-                '-print',
-                ')',
-            ]);
-        } else {
-            // Default: prune+print both vendor and node_modules
-            $args = array_merge($args, [
-                '(',
-                '-type', 'd',
-                '(',
-                '-name', 'vendor',
-                '-o',
-                '-name', 'node_modules',
-                ')',
-                '-prune',
-                '-print',
-                ')',
-            ]);
+        // Collect all -name and -path predicates from active types.
+        $namePredicates = [];
+        $pathPredicates = [];
+
+        foreach ($this->activeTypes as $typeKey) {
+            if (! isset($types[$typeKey])) {
+                continue;
+            }
+
+            foreach ($types[$typeKey]['names'] as $name) {
+                $namePredicates[] = $name;
+            }
+
+            foreach ($types[$typeKey]['paths'] as $pattern) {
+                $pathPredicates[] = $pattern;
+            }
         }
+
+        // Build the OR expression for all match predicates.
+        // e.g.  ( ( -name vendor -o -name node_modules -o -path '*/android/build' ) -type d -prune -print )
+        $matchArgs = [];
+        $first = true;
+
+        foreach ($namePredicates as $name) {
+            if (! $first) {
+                $matchArgs[] = '-o';
+            }
+
+            $matchArgs[] = '-name';
+            $matchArgs[] = $name;
+            $first = false;
+        }
+
+        foreach ($pathPredicates as $pattern) {
+            if (! $first) {
+                $matchArgs[] = '-o';
+            }
+
+            $matchArgs[] = '-path';
+            $matchArgs[] = $pattern;
+            $first = false;
+        }
+
+        if (empty($matchArgs)) {
+            // No predicates — nothing to find.
+            $this->findDone = true;
+
+            return;
+        }
+
+        $args = array_merge($args, [
+            '(',
+            '-type', 'd',
+            '(',
+            ...$matchArgs,
+            ')',
+            '-prune',
+            '-print',
+            ')',
+        ]);
 
         $descriptors = [
             0 => ['pipe', 'r'],  // stdin  (unused)
@@ -411,7 +497,8 @@ class CnKill extends Command
 
     /**
      * Validate and register a discovered directory into state.
-     * Determines the type (vendor/node) and checks the manifest file exists.
+     * Determines the type from the directory name/path and checks a manifest
+     * file exists in the parent.
      */
     protected function registerDir(string $dir): void
     {
@@ -420,8 +507,6 @@ class CnKill extends Command
         }
 
         // Safety-net: skip anything rooted inside a known cache directory.
-        // The find prune predicates handle most cases, but this catches edge
-        // cases such as the user passing a cache dir directly as $searchPath.
         foreach ($this->excludePaths as $excluded) {
             if ($dir === $excluded || str_starts_with($dir, $excluded . DIRECTORY_SEPARATOR)) {
                 return;
@@ -431,17 +516,15 @@ class CnKill extends Command
         $parent = dirname($dir);
         $name = basename($dir);
 
-        // Determine type and required manifest
-        if ($name === 'node_modules') {
-            $type = 'node';
-            $manifest = $parent . DIRECTORY_SEPARATOR . 'package.json';
-        } else {
-            $type = 'vendor';
-            $manifest = $parent . DIRECTORY_SEPARATOR . 'composer.json';
+        // Determine which type key this directory corresponds to.
+        $typeKey = $this->detectTypeKey($dir, $parent, $name);
+
+        if ($typeKey === null) {
+            return;
         }
 
-        // Only include dirs that belong to a real project
-        if (! file_exists($manifest)) {
+        // Only include dirs that belong to a real project (any known manifest).
+        if (! $this->hasManifest($parent, $typeKey)) {
             return;
         }
 
@@ -451,12 +534,75 @@ class CnKill extends Command
             'project' => basename($parent),
             'size' => null,
             'status' => 'calculating',
-            'type' => $type,
-            'lastModified' => $this->resolveLastModified($parent, $dir, $type),
+            'type' => $typeKey,
+            'lastModified' => $this->resolveLastModified($parent, $dir, $typeKey),
             'order' => $order,
         ];
 
         $this->enqueueSizeProcess($dir);
+    }
+
+    /**
+     * Match a discovered directory path to a type key from the active types.
+     * Returns null if no active type matches.
+     */
+    protected function detectTypeKey(string $dir, string $parent, string $name): ?string
+    {
+        $types = ConfigService::FOLDER_TYPES;
+
+        foreach ($this->activeTypes as $typeKey) {
+            if (! isset($types[$typeKey])) {
+                continue;
+            }
+
+            // Simple name match
+            foreach ($types[$typeKey]['names'] as $typeName) {
+                if ($name === $typeName) {
+                    return $typeKey;
+                }
+            }
+
+            // Path pattern match (e.g. */android/build)
+            foreach ($types[$typeKey]['paths'] as $pattern) {
+                if (fnmatch($pattern, $dir)) {
+                    return $typeKey;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check whether the project directory contains any known manifest file.
+     * For the 'android' type, look inside the android/ subdirectory.
+     */
+    protected function hasManifest(string $parent, string $typeKey): bool
+    {
+        // For android/build the parent is <project>/android — check one level up
+        // for project-level manifests AND the android directory itself.
+        if ($typeKey === 'android') {
+            $projectRoot = dirname($parent); // <project>/android → <project>
+            foreach (ConfigService::MANIFESTS as $manifest) {
+                if (file_exists($parent . DIRECTORY_SEPARATOR . $manifest)) {
+                    return true;
+                }
+
+                if (file_exists($projectRoot . DIRECTORY_SEPARATOR . $manifest)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        foreach (ConfigService::MANIFESTS as $manifest) {
+            if (file_exists($parent . DIRECTORY_SEPARATOR . $manifest)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // -------------------------------------------------------------------------
@@ -478,11 +624,11 @@ class CnKill extends Command
     /**
      * Resolve the most useful last-modified timestamp we can show for a project.
      */
-    protected function resolveLastModified(string $projectPath, string $dir, string $type): ?int
+    protected function resolveLastModified(string $projectPath, string $dir, string $typeKey): ?int
     {
         $candidates = [$projectPath, $dir];
 
-        if ($type === 'node') {
+        if ($typeKey === 'node') {
             $candidates = array_merge($candidates, [
                 $projectPath . DIRECTORY_SEPARATOR . 'package.json',
                 $projectPath . DIRECTORY_SEPARATOR . 'package-lock.json',
@@ -491,10 +637,29 @@ class CnKill extends Command
                 $projectPath . DIRECTORY_SEPARATOR . 'bun.lock',
                 $projectPath . DIRECTORY_SEPARATOR . 'bun.lockb',
             ]);
-        } else {
+        } elseif ($typeKey === 'vendor') {
             $candidates = array_merge($candidates, [
                 $projectPath . DIRECTORY_SEPARATOR . 'composer.json',
                 $projectPath . DIRECTORY_SEPARATOR . 'composer.lock',
+            ]);
+        } elseif ($typeKey === 'android') {
+            // projectPath is <project>/android; check both android/ and the project root
+            $projectRoot = dirname($projectPath);
+            $candidates = array_merge($candidates, [
+                $projectPath . DIRECTORY_SEPARATOR . 'build.gradle',
+                $projectPath . DIRECTORY_SEPARATOR . 'build.gradle.kts',
+                $projectRoot . DIRECTORY_SEPARATOR . 'package.json',
+                $projectRoot . DIRECTORY_SEPARATOR . 'pubspec.yaml',
+            ]);
+        } else {
+            // JS-based build output types — lock files in the project root are the best signal
+            $candidates = array_merge($candidates, [
+                $projectPath . DIRECTORY_SEPARATOR . 'package.json',
+                $projectPath . DIRECTORY_SEPARATOR . 'package-lock.json',
+                $projectPath . DIRECTORY_SEPARATOR . 'pnpm-lock.yaml',
+                $projectPath . DIRECTORY_SEPARATOR . 'yarn.lock',
+                $projectPath . DIRECTORY_SEPARATOR . 'bun.lock',
+                $projectPath . DIRECTORY_SEPARATOR . 'bun.lockb',
             ]);
         }
 
@@ -609,26 +774,7 @@ class CnKill extends Command
 
     protected function headerDescription(): string
     {
-        return 'Remove composer vendor and node_modules directories in your projects to save disk space.';
-    }
-
-    /**
-     * Render the type tag for default (both) mode (e.g. "[node] " or "[vendor] ").
-     * Returns [markup, plainText] — plainText is used for width calculations.
-     *
-     * @return array{string, string}
-     */
-    protected function renderTypeTag(string $type): array
-    {
-        if ($this->nodeMode || $this->composerMode) {
-            return ['', ''];
-        }
-
-        if ($type === 'node') {
-            return ['<fg=blue>[node] </>', '[node] '];
-        }
-
-        return ['<fg=magenta>[vendor] </>', '[vendor] '];
+        return 'Remove dev build and dependency directories from your projects to save disk space.';
     }
 
     /**
@@ -774,18 +920,36 @@ class CnKill extends Command
     // -------------------------------------------------------------------------
 
     /**
-     * Human-readable label for the type of directories being targeted.
+     * Human-readable label for the type(s) of directories being targeted.
      */
     protected function targetLabel(): string
     {
-        if ($this->nodeMode) {
-            return 'node_modules';
+        $count = count($this->activeTypes);
+
+        if ($count === 1) {
+            $key = $this->activeTypes[0];
+            $names = ConfigService::FOLDER_TYPES[$key]['names'] ?? [];
+            $paths = ConfigService::FOLDER_TYPES[$key]['paths'] ?? [];
+            $all = array_merge($names, $paths);
+
+            if (! empty($all)) {
+                // For path patterns like '*/android/build' strip the leading '*/'
+                return str_replace('*/', '', $all[0]);
+            }
         }
 
-        if ($this->composerMode) {
-            return 'vendor';
+        if ($count <= 4) {
+            $labels = [];
+            foreach ($this->activeTypes as $key) {
+                $names = ConfigService::FOLDER_TYPES[$key]['names'] ?? [];
+                $paths = ConfigService::FOLDER_TYPES[$key]['paths'] ?? [];
+                $first = array_merge($names, $paths)[0] ?? $key;
+                $labels[] = str_replace('*/', '', $first);
+            }
+
+            return implode('/', $labels);
         }
 
-        return 'vendor/node_modules';
+        return 'dev';
     }
 }

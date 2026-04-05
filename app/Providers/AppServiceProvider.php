@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Prompts\DirectoryListPrompt;
 use App\Prompts\Renderers\DirectoryListRenderer;
+use App\Services\ConfigService;
 use App\Services\VersionChecker;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Prompts\Prompt;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(VersionChecker::class);
+        $this->app->singleton(ConfigService::class);
     }
 
     // -------------------------------------------------------------------------

@@ -94,6 +94,8 @@ class DirectoryListPrompt extends Prompt
         public string $spinnerFrame = '⠋',
         public string $statusBarLine = '',
         public string $searchPath = '',
+        /** When true, the type tag column is hidden (only one type is active). */
+        public bool $singleTypeMode = false,
         ?callable $onDelete = null,
         ?callable $onSortCycle = null,
         ?callable $onSortToggle = null,

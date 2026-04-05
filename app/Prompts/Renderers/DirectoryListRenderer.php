@@ -117,26 +117,41 @@ class DirectoryListRenderer extends Renderer
      */
     private function renderTypeTag(string $type, DirectoryListPrompt $prompt): array
     {
-        // For vendor-only or node-only modes there is no type tag.
-        // The prompt carries node/composerMode flags via its public properties.
-        if (isset($prompt->nodeMode) && $prompt->nodeMode) {
-            return ['', ''];
-        }
-
-        if (isset($prompt->composerMode) && $prompt->composerMode) {
+        // When only a single folder type is active we omit the tag — it's redundant.
+        // The prompt exposes the count of active types via its public property.
+        if (isset($prompt->singleTypeMode) && $prompt->singleTypeMode) {
             return ['', ''];
         }
 
         return match ($type) {
-            'node' => [$this->blue('[node] '),     '[node] '],
-            'vendor' => [$this->magenta('[vendor] '), '[vendor] '],
-            'npm' => [$this->red(' [npm]'),           ' [npm]'],
-            'pnpm-store' => [$this->yellow(' [pnpm store]'),  ' [pnpm store]'],
-            'pnpm-cache' => [$this->yellow(' [pnpm cache]'),  ' [pnpm cache]'],
-            'yarn' => [$this->cyan(' [yarn]'),          ' [yarn]'],
-            'bun' => [$this->magenta(' [bun]'),        ' [bun]'],
-            'composer' => [$this->blue(' [composer]'),      ' [composer]'],
-            'cpx' => [$this->green(' [cpx]'),          ' [cpx]'],
+            // --- dependency dirs ---
+            'node' => [$this->blue('[node] '),           '[node] '],
+            'vendor' => [$this->magenta('[vendor] '),      '[vendor] '],
+            // --- JS framework build outputs ---
+            'next' => [$this->white('[next] '),          '[next] '],
+            'nuxt' => [$this->green('[nuxt] '),          '[nuxt] '],
+            'svelte-kit' => [$this->red('[svelte-kit] '),      '[svelte-kit] '],
+            'expo' => [$this->cyan('[expo] '),           '[expo] '],
+            // --- tooling / bundler caches ---
+            'turbo' => [$this->yellow('[turbo] '),        '[turbo] '],
+            'parcel-cache' => [$this->yellow('[parcel-cache] '), '[parcel-cache] '],
+            'cache' => [$this->gray('[cache] '),          '[cache] '],
+            'output' => [$this->cyan('[output] '),         '[output] '],
+            // --- generic build outputs ---
+            'dist' => [$this->green('[dist] '),          '[dist] '],
+            'build' => [$this->yellow('[build] '),        '[build] '],
+            'coverage' => [$this->red('[coverage] '),        '[coverage] '],
+            // --- platform-specific ---
+            'derived-data' => [$this->gray('[xcode] '),          '[xcode] '],
+            'android' => [$this->green('[android] '),       '[android] '],
+            // --- cache command types ---
+            'npm' => [$this->red(' [npm]'),             ' [npm]'],
+            'pnpm-store' => [$this->yellow(' [pnpm store]'),   ' [pnpm store]'],
+            'pnpm-cache' => [$this->yellow(' [pnpm cache]'),   ' [pnpm cache]'],
+            'yarn' => [$this->cyan(' [yarn]'),           ' [yarn]'],
+            'bun' => [$this->magenta(' [bun]'),         ' [bun]'],
+            'composer' => [$this->blue(' [composer]'),       ' [composer]'],
+            'cpx' => [$this->green(' [cpx]'),           ' [cpx]'],
             default => ['', ''],
         };
     }
