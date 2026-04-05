@@ -76,6 +76,65 @@ cnkill /path/to/projects --maxdepth=4     # limit search depth
 cnkill cache --sort=modified        # sort caches by last modified
 ```
 
+## Configuration
+
+cnkill stores its configuration at `~/.config/cnkill/config.json` (respects `$XDG_CONFIG_HOME`).
+
+Use the `config` command to manage which folder types are scanned and to define custom types.
+
+### Toggle enabled folder types
+
+```bash
+cnkill config
+```
+
+Opens an interactive multi-select list of all known folder types (built-in and custom). Use `Space` to toggle a type on or off, `Enter` to save, and `q` to quit without saving.
+
+### Add a custom folder type
+
+```bash
+cnkill config add
+```
+
+Runs an interactive 4-step wizard:
+
+1. **Folder name or pattern** — a simple name (e.g. `.venv`) or a wildcard path pattern (e.g. `*/ios/build`)
+2. **Label** — human-readable name shown in `cnkill config`
+3. **Manifest files** — comma-separated files that must exist in the parent directory to confirm it's a real project (e.g. `pyproject.toml, requirements.txt`); leave blank to match any
+4. **Lock / reference files** — files used to determine the "last modified" timestamp; defaults to manifests if left blank
+
+After the wizard, the new type is saved and automatically enabled.
+
+### Remove a custom folder type
+
+```bash
+cnkill config remove
+```
+
+Presents a list of user-defined custom types. Select one and confirm to delete it.
+
+### Built-in folder types
+
+| Type | Directory | Enabled by default |
+|------|-----------|-------------------|
+| `vendor` | vendor (Composer) | Yes |
+| `node` | node_modules (npm/pnpm/yarn/bun) | Yes |
+| `next` | .next (Next.js build output) | Yes |
+| `expo` | .expo (Expo / React Native) | Yes |
+| `turbo` | .turbo (Turborepo cache) | Yes |
+| `svelte-kit` | .svelte-kit (SvelteKit) | Yes |
+| `nuxt` | .nuxt (Nuxt build output) | Yes |
+| `cache` | .cache (generic tool cache) | Yes |
+| `parcel-cache` | .parcel-cache (Parcel bundler) | Yes |
+| `coverage` | coverage (test coverage reports) | Yes |
+| `output` | .output (Nitro / Nuxt server output) | Yes |
+| `dist` | dist (build distribution) | No |
+| `build` | build (generic build output) | No |
+| `derived-data` | DerivedData (Xcode) | No |
+| `android` | android/build (Android / Gradle) | No |
+
+> **Note:** Per-run flags like `--node` and `--composer` override the saved config for that invocation only.
+
 ## Controls
 
 | Key | Action |
