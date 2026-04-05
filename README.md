@@ -61,19 +61,19 @@ cnkill [path: defaults to current path] [options]
 ```bash
 ## Examples
 
-cnkill                          # find vendor/ in current path
+cnkill                              # find both vendor/ and node_modules/ in current path
 
-cnkill /path/to/projects        # find vendor/ in a specific path
+cnkill /path/to/projects            # find both vendor/ and node_modules/ in a specific path
 
-cnkill /path/to/projects --node # find node_modules/ only
+cnkill /path/to/projects --node     # find node_modules/ only
 
-cnkill /path/to/projects --all  # find both vendor/ and node_modules/
+cnkill /path/to/projects --composer # find vendor/ only
 
-cnkill /path/to/projects --sort=size  # sort by size
+cnkill /path/to/projects --sort=size      # sort by size
 
-cnkill /path/to/projects --maxdepth=4  # limit search depth
+cnkill /path/to/projects --maxdepth=4     # limit search depth
 
-cnkill cache --sort=modified  # sort caches by last modified
+cnkill cache --sort=modified        # sort caches by last modified
 ```
 
 ## Controls
