@@ -70,6 +70,22 @@ class UpgradeCommand extends Command
             return self::SUCCESS;
         }
 
+        // ── Downgrade protection ──────────────────────────────────────────────
+        if ($checker->isNewer($current, $latest)) {
+            $this->line("  <fg=yellow>You are running</> <options=bold>{$current}</><fg=yellow>, which is newer than the latest stable release</> <options=bold>{$latest}</><fg=yellow>.</>");
+            $this->newLine();
+
+            if (! $this->option('force')) {
+                $this->line('  Use <fg=cyan>--force</> if you want to downgrade to the latest stable release.');
+                $this->newLine();
+
+                return self::SUCCESS;
+            }
+
+            $this->line('  <fg=yellow>Proceeding with downgrade due to --force flag.</>');
+            $this->newLine();
+        }
+
         // ── Already up to date ────────────────────────────────────────────────
         if (! $checker->isNewer($latest, $current) && ! $this->option('force')) {
             $this->line("  <fg=green>Already on the latest version ({$latest}). Nothing to do.</>");
@@ -81,10 +97,16 @@ class UpgradeCommand extends Command
 
         // ── Detect install method and upgrade ─────────────────────────────────
         if ($checker->isComposerInstall()) {
-            return $this->upgradeComposer($latest);
+            $result = $this->upgradeComposer($latest);
+        } else {
+            $result = $this->upgradeStandalone($checker, $latest, $current);
         }
 
-        return $this->upgradeStandalone($checker, $latest, $current);
+        if ($result === self::SUCCESS) {
+            $checker->writeCache($latest);
+        }
+
+        return $result;
     }
 
     // -------------------------------------------------------------------------

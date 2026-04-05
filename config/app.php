@@ -29,7 +29,7 @@ return [
     |
     */
 
-    'version' => app('git.version'),
+    'version' => str_contains('@git_version@', '@') ? app('git.version') : '@git_version@',
 
     /*
     |--------------------------------------------------------------------------

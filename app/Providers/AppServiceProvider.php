@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function maybeShowUpgradeNotice(): void
     {
-        if (in_array('upgrade', $_SERVER['argv'] ?? [], true)) {
+        if (($_SERVER['argv'][1] ?? null) === 'upgrade') {
             return;
         }
 

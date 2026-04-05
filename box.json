@@ -1,4 +1,5 @@
 {
+    "git-version": "git_version",
     "shebang": false,
     "chmod": "0755",
     "directories": [
