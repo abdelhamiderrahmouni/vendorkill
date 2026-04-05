@@ -30,6 +30,8 @@ class ConfigCommand extends Command
 
     public function handle(ConfigService $config): int
     {
+        $this->printHeader();
+
         $action = $this->argument('action');
 
         return match ($action) {
@@ -38,6 +40,28 @@ class ConfigCommand extends Command
             null => $this->handleList($config),
             default => $this->handleUnknownAction((string) $action),
         };
+    }
+
+    private function printHeader(): void
+    {
+        $art = [
+            '   ██████╗███╗   ██╗██╗  ██╗██╗██╗     ██╗     ',
+            '  ██╔════╝████╗  ██║██║ ██╔╝██║██║     ██║     ',
+            '  ██║     ██╔██╗ ██║█████╔╝ ██║██║     ██║     ',
+            '  ██║     ██║╚██╗██║██╔═██╗ ██║██║     ██║     ',
+            '  ╚██████╗██║ ╚████║██║  ██╗██║███████╗███████╗',
+            '   ╚═════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝',
+        ];
+
+        $this->newLine();
+
+        foreach ($art as $line) {
+            $this->line('<fg=blue>' . $line . '</>');
+        }
+
+        $this->line('  <fg=gray>Configure which folder types cnkill scans.</>');
+        $this->line('  <fg=yellow>' . app()->version() . '</>');
+        $this->newLine();
     }
 
     // -------------------------------------------------------------------------
