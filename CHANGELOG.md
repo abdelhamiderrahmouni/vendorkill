@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0](https://github.com/barnphp/cnkill/releases/tag/v0.6.0) (2026-04-05)
+
+### Features
+
+- integrate DirectoryListPrompt and DirectoryListRenderer for enhanced directory navigation ([43c9427](https://github.com/barnphp/cnkill/commit/43c9427d492a4debd7ddb2a6f63c542de91ca3b5))
+- add DirectoryListPrompt and DirectoryListRenderer for scrollable directory navigation ([71e16a5](https://github.com/barnphp/cnkill/commit/71e16a5a06bc10953475bb29631459e5ff274184))
+
+### Bug Fixes
+
+- update examples in README for command options ([37c1fd5](https://github.com/barnphp/cnkill/commit/37c1fd55d66612f00866104b63a1f377419eac1d))
+- adjust styling for code block in README ([66a31ef](https://github.com/barnphp/cnkill/commit/66a31ef457a4df5eb821bf67331645abd335946b))
 ## [v0.5.9](https://github.com/barnphp/cnkill/releases/tag/v0.5.9/compare/v0.5.9...v0.5.9) - 2026-04-02
 
 ### Changelog
