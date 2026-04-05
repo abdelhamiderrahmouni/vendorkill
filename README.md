@@ -80,17 +80,17 @@ cnkill cache --sort=modified        # sort caches by last modified
 
 cnkill stores its configuration at `~/.config/cnkill/config.json` (respects `$XDG_CONFIG_HOME`).
 
-Use the `config` command to manage which folder types are scanned and to define custom types.
+Use the `config` command to manage which targets are scanned and to define custom ones.
 
-### Toggle enabled folder types
+### Toggle enabled targets
 
 ```bash
 cnkill config
 ```
 
-Opens an interactive multi-select list of all known folder types (built-in and custom). Use `Space` to toggle a type on or off, `Enter` to save, and `q` to quit without saving.
+Opens an interactive multi-select list of all known targets (built-in and custom). Use `Space` to toggle a target on or off, `Enter` to save, and `q` to quit without saving.
 
-### Add a custom folder type
+### Add a custom target
 
 ```bash
 cnkill config add
@@ -103,20 +103,20 @@ Runs an interactive 4-step wizard:
 3. **Manifest files** — comma-separated files that must exist in the parent directory to confirm it's a real project (e.g. `pyproject.toml, requirements.txt`); leave blank to match any
 4. **Lock / reference files** — files used to determine the "last modified" timestamp; defaults to manifests if left blank
 
-After the wizard, the new type is saved and automatically enabled.
+After the wizard, the new target is saved and automatically enabled.
 
-### Remove a custom folder type
+### Remove a custom target
 
 ```bash
 cnkill config remove
 ```
 
-Presents a list of user-defined custom types. Select one and confirm to delete it.
+Presents a list of user-defined custom targets. Select one and confirm to delete it.
 
-### Built-in folder types
+### Built-in targets
 
-| Type | Directory | Enabled by default |
-|------|-----------|-------------------|
+| Target | Directory | Enabled by default |
+|--------|-----------|-------------------|
 | `vendor` | vendor (Composer) | Yes |
 | `node` | node_modules (npm/pnpm/yarn/bun) | Yes |
 | `next` | .next (Next.js build output) | Yes |
