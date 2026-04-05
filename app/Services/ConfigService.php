@@ -152,6 +152,129 @@ class ConfigService
     ];
 
     /**
+     * Return the merged catalogue of all folder types: built-in first, then any
+     * custom types the user has added via `cnkill config add`.
+     *
+     * Custom types use the same shape as FOLDER_TYPES entries and are stored
+     * under the 'custom_types' key in config.json. Their keys are prefixed with
+     * 'custom:' to guarantee they never collide with built-in keys.
+     *
+     * @return array<string, array{label: string, default: bool, names: string[], paths: string[], manifests: string[], lockfiles: string[]}>
+     */
+    public function getAllTypes(): array
+    {
+        return array_merge(self::FOLDER_TYPES, $this->getCustomTypes());
+    }
+
+    /**
+     * Return only the user-defined custom types, keyed by their 'custom:…' key.
+     *
+     * @return array<string, array{label: string, default: bool, names: string[], paths: string[], manifests: string[], lockfiles: string[]}>
+     */
+    public function getCustomTypes(): array
+    {
+        $config = $this->read();
+
+        if (empty($config['custom_types']) || ! is_array($config['custom_types'])) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($config['custom_types'] as $key => $type) {
+            if (! is_string($key) || ! is_array($type)) {
+                continue;
+            }
+
+            // Ensure the stored entry has all required fields with safe defaults.
+            $out[$key] = [
+                'label' => (string) ($type['label'] ?? $key),
+                'default' => true,  // custom types are always enabled by default
+                'names' => array_values(array_filter((array) ($type['names'] ?? []), 'is_string')),
+                'paths' => array_values(array_filter((array) ($type['paths'] ?? []), 'is_string')),
+                'manifests' => array_values(array_filter((array) ($type['manifests'] ?? []), 'is_string')),
+                'lockfiles' => array_values(array_filter((array) ($type['lockfiles'] ?? []), 'is_string')),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Persist a new custom type.  The key is derived from the folder name and
+     * prefixed with 'custom:' to avoid collisions with built-in keys.
+     *
+     * Returns the generated key on success, or null on write failure.
+     *
+     * @param  array{label: string, names: string[], paths: string[], manifests: string[], lockfiles: string[]}  $type
+     */
+    public function addCustomType(array $type): ?string
+    {
+        $config = $this->read();
+
+        if (! isset($config['custom_types']) || ! is_array($config['custom_types'])) {
+            $config['custom_types'] = [];
+        }
+
+        // Derive a unique key from the first name/path segment.
+        $slug = $type['names'][0] ?? preg_replace('/[^a-z0-9\-]/', '-', strtolower($type['paths'][0] ?? 'custom'));
+        $slug = ltrim(preg_replace('/[^a-z0-9\-]/', '-', strtolower((string) $slug)), '.-');
+        $baseKey = 'custom:' . $slug;
+        $key = $baseKey;
+        $suffix = 2;
+
+        // Avoid overwriting an existing custom type with the same key.
+        while (isset($config['custom_types'][$key])) {
+            $key = $baseKey . '-' . $suffix;
+            $suffix++;
+        }
+
+        $config['custom_types'][$key] = [
+            'label' => $type['label'],
+            'names' => $type['names'],
+            'paths' => $type['paths'],
+            'manifests' => $type['manifests'],
+            'lockfiles' => $type['lockfiles'],
+        ];
+
+        // Auto-enable the new type.
+        $enabledTypes = $this->getEnabledTypes();
+        $enabledTypes[] = $key;
+        $config['enabled_types'] = $enabledTypes;
+
+        return $this->write($config) ? $key : null;
+    }
+
+    /**
+     * Remove a custom type by key and disable it.
+     * Returns false if the key is not a custom type or write fails.
+     */
+    public function removeCustomType(string $key): bool
+    {
+        if (! str_starts_with($key, 'custom:')) {
+            return false;
+        }
+
+        $config = $this->read();
+
+        if (! isset($config['custom_types'][$key])) {
+            return false;
+        }
+
+        unset($config['custom_types'][$key]);
+
+        // Also remove from enabled list if present.
+        if (isset($config['enabled_types']) && is_array($config['enabled_types'])) {
+            $config['enabled_types'] = array_values(array_filter(
+                $config['enabled_types'],
+                fn (string $t) => $t !== $key
+            ));
+        }
+
+        return $this->write($config);
+    }
+
+    /**
      * Resolve the path to the config file.
      */
     public function configPath(): string
@@ -211,26 +334,27 @@ class ConfigService
 
     /**
      * Return the list of enabled folder type keys, taking defaults into account
-     * when no config file exists yet.
+     * when no config file exists yet. Includes both built-in and custom types.
      *
      * @return string[]
      */
     public function getEnabledTypes(): array
     {
         $config = $this->read();
+        $allKeys = array_keys($this->getAllTypes());
 
         if (! isset($config['enabled_types'])) {
-            // No saved config — return the types that are on by default.
+            // No saved config — return types that are on by default.
             return array_keys(array_filter(
-                self::FOLDER_TYPES,
+                $this->getAllTypes(),
                 fn (array $t) => $t['default']
             ));
         }
 
-        // Intersect with the known list so stale/unknown keys are silently dropped.
+        // Intersect with the full known list so stale/unknown keys are silently dropped.
         return array_values(array_intersect(
             (array) $config['enabled_types'],
-            array_keys(self::FOLDER_TYPES)
+            $allKeys
         ));
     }
 
@@ -244,7 +368,7 @@ class ConfigService
         $config = $this->read();
         $config['enabled_types'] = array_values(array_intersect(
             $types,
-            array_keys(self::FOLDER_TYPES)
+            array_keys($this->getAllTypes())
         ));
 
         return $this->write($config);

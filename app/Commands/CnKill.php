@@ -121,6 +121,13 @@ class CnKill extends Command
     protected array $activeTypes = [];
 
     /**
+     * The full catalogue of folder types (built-in + custom), resolved once in handle().
+     *
+     * @var array<string, array{label: string, default: bool, names: string[], paths: string[], manifests: string[], lockfiles: string[]}>
+     */
+    protected array $folderTypes = [];
+
+    /**
      * Global package-manager cache directories to exclude from scanning.
      * These are handled separately by the `cache` command.
      *
@@ -159,7 +166,10 @@ class CnKill extends Command
         }
 
         // Resolve which folder types to scan
-        $this->activeTypes = $this->resolveActiveTypes();
+        /** @var ConfigService $configService */
+        $configService = $this->laravel->make(ConfigService::class);
+        $this->folderTypes = $configService->getAllTypes();
+        $this->activeTypes = $this->resolveActiveTypes($configService);
 
         if (empty($this->activeTypes)) {
             $this->error('No folder types are enabled. Run `cnkill config` to enable some.');
@@ -239,9 +249,9 @@ class CnKill extends Command
      *
      * @return string[]
      */
-    protected function resolveActiveTypes(): array
+    protected function resolveActiveTypes(ConfigService $configService): array
     {
-        // Map CLI option names → type keys
+        // Map CLI option names → built-in type keys
         $flagMap = [
             'node' => 'node',
             'composer' => 'vendor',
@@ -272,10 +282,7 @@ class CnKill extends Command
             return $flaggedTypes;
         }
 
-        // Otherwise, load from config (falls back to defaults)
-        /** @var ConfigService $configService */
-        $configService = $this->laravel->make(ConfigService::class);
-
+        // Otherwise, load from config (falls back to defaults, includes custom types)
         return $configService->getEnabledTypes();
     }
 
@@ -329,7 +336,7 @@ class CnKill extends Command
     protected function startFindProcess(string $searchPath): void
     {
         $maxdepth = $this->option('maxdepth');
-        $types = ConfigService::FOLDER_TYPES;
+        $types = $this->folderTypes;
 
         $args = ['find', $searchPath];
 
@@ -548,7 +555,7 @@ class CnKill extends Command
      */
     protected function detectTypeKey(string $dir, string $parent, string $name): ?string
     {
-        $types = ConfigService::FOLDER_TYPES;
+        $types = $this->folderTypes;
 
         foreach ($this->activeTypes as $typeKey) {
             if (! isset($types[$typeKey])) {
@@ -580,7 +587,7 @@ class CnKill extends Command
      */
     protected function hasManifest(string $parent, string $typeKey): bool
     {
-        $manifests = ConfigService::FOLDER_TYPES[$typeKey]['manifests'] ?? [];
+        $manifests = $this->folderTypes[$typeKey]['manifests'] ?? [];
 
         $searchDirs = [$parent];
 
@@ -622,7 +629,7 @@ class CnKill extends Command
      */
     protected function resolveLastModified(string $projectPath, string $dir, string $typeKey): ?int
     {
-        $lockfiles = ConfigService::FOLDER_TYPES[$typeKey]['lockfiles'] ?? [];
+        $lockfiles = $this->folderTypes[$typeKey]['lockfiles'] ?? [];
 
         // Start with the directory itself and its project root
         $candidates = [$projectPath, $dir];
@@ -904,8 +911,8 @@ class CnKill extends Command
 
         if ($count === 1) {
             $key = $this->activeTypes[0];
-            $names = ConfigService::FOLDER_TYPES[$key]['names'] ?? [];
-            $paths = ConfigService::FOLDER_TYPES[$key]['paths'] ?? [];
+            $names = $this->folderTypes[$key]['names'] ?? [];
+            $paths = $this->folderTypes[$key]['paths'] ?? [];
             $all = array_merge($names, $paths);
 
             if (! empty($all)) {
@@ -917,8 +924,8 @@ class CnKill extends Command
         if ($count <= 4) {
             $labels = [];
             foreach ($this->activeTypes as $key) {
-                $names = ConfigService::FOLDER_TYPES[$key]['names'] ?? [];
-                $paths = ConfigService::FOLDER_TYPES[$key]['paths'] ?? [];
+                $names = $this->folderTypes[$key]['names'] ?? [];
+                $paths = $this->folderTypes[$key]['paths'] ?? [];
                 $first = array_merge($names, $paths)[0] ?? $key;
                 $labels[] = str_replace('*/', '', $first);
             }
