@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0](https://github.com/barnphp/cnkill/releases/tag/v0.7.0) (2026-04-06)
+
+### Features
+
+- update ConfigCommand to replace 'folder types' with 'targets' in descriptions and prompts ([5290091](https://github.com/barnphp/cnkill/commit/529009146c982a480501d26870956dcd803d793c))
+- update README with configuration management for folder types ([219ab3d](https://github.com/barnphp/cnkill/commit/219ab3d2d3d582c6052b0c41986e4a5458627296))
+- add header display to configuration command ([c9b0d97](https://github.com/barnphp/cnkill/commit/c9b0d97857f43e7a8f6d86d05616de4143aec4e2))
+- add 'q' key press to quit. ([5b1ac49](https://github.com/barnphp/cnkill/commit/5b1ac497cb38a07d761adcfbe0b4d5e72891cb7d))
+- add configuration command for folder types and enhance directory scanning ([32f4f3b](https://github.com/barnphp/cnkill/commit/32f4f3b2e7b03ae68ad027b2c82ad1a71dd81699))
+- add configuration command for folder types and enhance directory scanning ([52a4d65](https://github.com/barnphp/cnkill/commit/52a4d65be14c96da41e74caee1ea4f789b8e9da6))
+- add configuration command for folder types and enhance directory scanning ([3d001bf](https://github.com/barnphp/cnkill/commit/3d001bf121be572ab778985e50e6c39bb461b9e3))
+- add downgrade protection and fix upgrade command ([15249e3](https://github.com/barnphp/cnkill/commit/15249e31fb11cdd5341843271b018fde92648bb1))
+
+### Code Refactoring
+
+- code simplification ([8e5751e](https://github.com/barnphp/cnkill/commit/8e5751e3f1d35df9f637af63ed4fbda12ae8c8df))
+
+### Documentation
+
+- update README to reflect changes from folder types to targets ([a0598b6](https://github.com/barnphp/cnkill/commit/a0598b6bfa64a2a03776daf83243ab77b49b775d))
+
+### Chores
+
+- app build ([c2c660c](https://github.com/barnphp/cnkill/commit/c2c660c716ada632100ce9a0f9df4b2ad9f80a11))
+- app build ([a00acca](https://github.com/barnphp/cnkill/commit/a00accae071be8408c9e3eccd6910674396885ed))
 ## [0.6.1](https://github.com/barnphp/cnkill/releases/tag/v0.6.1) (2026-04-05)
 
 ### Chores
