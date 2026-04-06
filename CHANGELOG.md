@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.7.0](https://github.com/barnphp/cnkill/releases/tag/v0.7.0/compare/v0.7.0...v0.7.0) - 2026-04-06
+
+**Full Changelog**: https://github.com/barnphp/cnkill/compare/v0.6.1...v0.7.0
+
 ## [0.7.0](https://github.com/barnphp/cnkill/releases/tag/v0.7.0) (2026-04-06)
 
 ### Features
@@ -27,11 +31,13 @@ All notable changes to this project will be documented in this file.
 
 - app build ([c2c660c](https://github.com/barnphp/cnkill/commit/c2c660c716ada632100ce9a0f9df4b2ad9f80a11))
 - app build ([a00acca](https://github.com/barnphp/cnkill/commit/a00accae071be8408c9e3eccd6910674396885ed))
+
 ## [0.6.1](https://github.com/barnphp/cnkill/releases/tag/v0.6.1) (2026-04-05)
 
 ### Chores
 
 - app build ([261c0fa](https://github.com/barnphp/cnkill/commit/261c0fa004ba57ee152fd7003d901c328b547142))
+
 ## [0.6.0](https://github.com/barnphp/cnkill/releases/tag/v0.6.0) (2026-04-05)
 
 ### Features
@@ -43,6 +49,7 @@ All notable changes to this project will be documented in this file.
 
 - update examples in README for command options ([37c1fd5](https://github.com/barnphp/cnkill/commit/37c1fd55d66612f00866104b63a1f377419eac1d))
 - adjust styling for code block in README ([66a31ef](https://github.com/barnphp/cnkill/commit/66a31ef457a4df5eb821bf67331645abd335946b))
+
 ## [v0.5.9](https://github.com/barnphp/cnkill/releases/tag/v0.5.9/compare/v0.5.9...v0.5.9) - 2026-04-02
 
 ### Changelog
