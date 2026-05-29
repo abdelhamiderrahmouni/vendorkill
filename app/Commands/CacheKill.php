@@ -211,6 +211,21 @@ class CacheKill extends Command
                 'label' => 'cpx',
                 'type' => 'cpx',
             ],
+            [
+                'path' => $home . '/.cargo/registry/cache',
+                'label' => 'cargo registry cache',
+                'type' => 'cargo-registry-cache',
+            ],
+            [
+                'path' => $home . '/.cargo/registry/src',
+                'label' => 'cargo registry src',
+                'type' => 'cargo-registry-src',
+            ],
+            [
+                'path' => $home . '/.cargo/git',
+                'label' => 'cargo git checkouts',
+                'type' => 'cargo-git',
+            ],
         ];
 
         $result = [];
@@ -328,6 +343,9 @@ class CacheKill extends Command
             'bun' => [' <fg=magenta>[bun]</>',      ' [bun]'],
             'composer' => [' <fg=blue>[composer]</>',    ' [composer]'],
             'cpx' => [' <fg=green>[cpx]</>',        ' [cpx]'],
+            'cargo-registry-cache' => [' <fg=yellow>[cargo registry cache]</>', ' [cargo registry cache]'],
+            'cargo-registry-src' => [' <fg=yellow>[cargo registry src]</>', ' [cargo registry src]'],
+            'cargo-git' => [' <fg=yellow>[cargo git]</>', ' [cargo git]'],
             default => ['', ''],
         };
     }

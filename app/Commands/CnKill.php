@@ -37,6 +37,7 @@ class CnKill extends Command
                                      {--build : Search for build directories only}
                                      {--derived-data : Search for DerivedData (Xcode) directories only}
                                      {--android : Search for android/build (Gradle) directories only}
+                                     {--rust : Search for target (Cargo build output) directories only}
                                      {--sort=default : Sort by default, name, size, or modified}';
 
     /**
@@ -268,6 +269,7 @@ class CnKill extends Command
             'build' => 'build',
             'derived-data' => 'derived-data',
             'android' => 'android',
+            'rust' => 'target',
         ];
 
         $flaggedTypes = [];

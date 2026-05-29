@@ -73,6 +73,8 @@ cnkill /path/to/projects --sort=size      # sort by size
 
 cnkill /path/to/projects --maxdepth=4     # limit search depth
 
+cnkill /path/to/projects --rust         # find target/ (Rust Cargo) directories only
+
 cnkill cache --sort=modified        # sort caches by last modified
 ```
 
@@ -128,6 +130,7 @@ Presents a list of user-defined custom targets. Select one and confirm to delete
 | `parcel-cache` | .parcel-cache (Parcel bundler) | Yes |
 | `coverage` | coverage (test coverage reports) | Yes |
 | `output` | .output (Nitro / Nuxt server output) | Yes |
+| `rust` | target (Cargo build output) | Yes |
 | `dist` | dist (build distribution) | No |
 | `build` | build (generic build output) | No |
 | `derived-data` | DerivedData (Xcode) | No |

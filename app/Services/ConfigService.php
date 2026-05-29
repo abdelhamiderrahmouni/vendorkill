@@ -36,6 +36,14 @@ class ConfigService
             'manifests' => ['composer.json'],
             'lockfiles' => ['composer.json', 'composer.lock'],
         ],
+        'target' => [
+            'label' => 'target  (Cargo build output)',
+            'default' => true,
+            'names' => ['target'],
+            'paths' => [],
+            'manifests' => ['Cargo.toml'],
+            'lockfiles' => ['Cargo.toml', 'Cargo.lock'],
+        ],
         'node' => [
             'label' => 'node_modules  (npm / pnpm / yarn / bun)',
             'default' => true,
