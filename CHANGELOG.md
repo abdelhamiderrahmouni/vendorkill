@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0](https://github.com/barnphp/cnkill/releases/tag/v0.8.0) (2026-05-29)
+
+### Features
+
+- add Rust project cleanup support ([aa12831](https://github.com/barnphp/cnkill/commit/aa12831850a159d8927cc5f1118ed3d8688308e0))
 ## [v0.7.0](https://github.com/barnphp/cnkill/releases/tag/v0.7.0/compare/v0.7.0...v0.7.0) - 2026-04-06
 
 **Full Changelog**: https://github.com/barnphp/cnkill/compare/v0.6.1...v0.7.0
